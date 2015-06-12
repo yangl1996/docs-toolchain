@@ -2,7 +2,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 import json
 
-listenAddr = "128.199.244.33"
+listenAddr = "128.199.82.190"
 listenPort = 7654
 
 
@@ -11,7 +11,8 @@ class MyServer(BaseHTTPRequestHandler):
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len)
         data = json.loads(post_body)
-        print(data)
+        to_print = json.dumps(data, sort_keys=True, indent=2)
+        print(to_print)
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
