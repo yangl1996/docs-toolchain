@@ -8,7 +8,7 @@ listenPort = 7654
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
-        content_len = int(self.headers.getheader('content-length', 0))
+        content_len = int(self.headers.['content-length'])
         post_body = self.rfile.read(content_len)
         data = json.loads(post_body)
         print(data)
