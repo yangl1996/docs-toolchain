@@ -4,6 +4,7 @@ import json
 
 listenAddr = "128.199.82.190"
 listenPort = 7654
+secretKey = ""  # TODO:implement the secure feature of GitHub webhook
 
 
 class MyServer(BaseHTTPRequestHandler):
