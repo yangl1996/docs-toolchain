@@ -14,6 +14,7 @@ class MyServer(BaseHTTPRequestHandler):
         data = json.loads(post_body)
         to_print = json.dumps(data, sort_keys=True, indent=2)
         print(to_print)
+        print("======================================")
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
@@ -26,4 +27,4 @@ except KeyboardInterrupt:
     pass
 
 myServer.server_close()
-print(time.asctime(), "Picture Server Stops - %s:%s" % (listenAddr, listenPort))
+print(time.asctime(), "Server Stops - %s:%s" % (listenAddr, listenPort))
