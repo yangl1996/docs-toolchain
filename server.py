@@ -1,14 +1,18 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 import json
+import requests
 
 listenAddr = "128.199.82.190"
 listenPort = 7654
-secretKey = ""  # TODO:implement the secure feature of GitHub webhook
+secretKey = ""  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
+pagureToken = "token 21HEK7SCCDNT12APRN00YJIY4AIYZM3DLXPNT8NP1275FA9MRWJZDM2ICWT8MYJX"  # TODO: this is a test propose token
 
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
+        global pagureToken
+
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         if self.headers['X-Github-Event'] == 'pull_request':
@@ -23,6 +27,15 @@ class MyServer(BaseHTTPRequestHandler):
                 to_print = json.dumps(info, sort_keys=True, indent=2)
                 print(to_print)
                 print("======================================")
+                pagure_info = {'title': info['title'], 'issue_content': info['content'],
+                               'status': "Open"}
+                pagure_payload = json.dumps(pagure_info)
+                pagure_URL = "https://pagure.io/api/0/doc-test/new_issue"
+                pagure_head = {"Authorization": pagureToken}
+                r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
+                print(r.text)
+
+
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
