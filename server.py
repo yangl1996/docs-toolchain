@@ -27,9 +27,8 @@ class MyServer(BaseHTTPRequestHandler):
                 to_print = json.dumps(info, sort_keys=True, indent=2)
                 print(to_print)
                 print("======================================")
-                pagure_info = {'title': info['title'], 'issue_content': info['content'],
+                pagure_payload = {'title': info['title'], 'issue_content': info['content'],
                                'status': "Open"}
-                pagure_payload = json.dumps(pagure_info)
                 pagure_URL = "https://pagure.io/api/0/doc-test/new_issue"
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
