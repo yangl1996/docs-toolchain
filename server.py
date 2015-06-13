@@ -12,6 +12,7 @@ pagureToken = "token 21HEK7SCCDNT12APRN00YJIY4AIYZM3DLXPNT8NP1275FA9MRWJZDM2ICWT
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
+        # TODO: send a response to github after receiving the request
         global pagureToken
 
         content_len = int(self.headers['content-length'])
