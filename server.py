@@ -13,9 +13,16 @@ class MyServer(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode()
         if self.headers['X-Github-Event'] == 'pull_request':
             data = json.loads(post_body)
-            to_print = json.dumps(data, sort_keys=True, indent=2)
-            print(to_print)
-            print("======================================")
+
+            # new PR opened
+            if data['action'] == 'opened':
+                print("New Pull Request opened")
+                info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
+                        'id': data['pull_request']['id'], 'link': data['pull_request']['html_url'],
+                        'content': data['pull_request']['body']}
+                to_print = json.dumps(info, sort_keys=True, indent=2)
+                print(to_print)
+                print("======================================")
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
