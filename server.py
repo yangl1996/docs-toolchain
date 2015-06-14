@@ -10,7 +10,7 @@ secretKey = ""  # TODO:implement the secure feature of GitHub web hook (verify S
 pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
 # TODO: this is a test propose token
 pagureRepo = "docs-test"
-local_repo_path = '/Users/yangl1996/Documents/doc-test'
+local_repo_path = '/root/doc-test'
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -50,7 +50,7 @@ class MyServer(BaseHTTPRequestHandler):
                     print("Pull request deleted without being merged")
 
                 else:
-                    # TODO: changes merged, execute repo sync
+                    # TODO: is there a more elegant way to do this?
                     print("Changes merged")
                     command = "cd " + local_repo_path + """
                     git pull origin master
