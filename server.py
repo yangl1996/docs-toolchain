@@ -17,7 +17,6 @@ class MyServer(BaseHTTPRequestHandler):
 
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
-        self.send_response_only(200)
         if self.headers['X-Github-Event'] == 'pull_request':
             data = json.loads(post_body)
 
