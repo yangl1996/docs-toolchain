@@ -11,6 +11,7 @@ class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
+        self.send_response_only(200)
         print(post_body)
         print("======================")
 
