@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 import json
 import requests
+import os
 
 listenAddr = "128.199.82.190"
 listenPort = 7654
@@ -9,6 +10,7 @@ secretKey = ""  # TODO:implement the secure feature of GitHub web hook (verify S
 pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
 # TODO: this is a test propose token
 pagureRepo = "docs-test"
+local_repo_path = '/Users/yangl1996/Documents/doc-test'
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -41,6 +43,20 @@ class MyServer(BaseHTTPRequestHandler):
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
                 print(r.text)
+
+            elif data['action'] == 'closed':
+                if not data['pull_request']['merged']:
+                    # TODO: insufficient pagure API
+                    print("Pull request deleted without being merged")
+
+                else:
+                    # TODO: changes merged, execute repo sync
+                    print("Changes merged")
+                    command = "cd " + local_repo_path + """
+                    git pull origin master
+                    git push pagure master
+                    """
+                    os.system(command)
 
 
 
