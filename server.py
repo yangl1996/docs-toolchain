@@ -33,6 +33,8 @@ class MyServer(BaseHTTPRequestHandler):
                 print("======================================")
                 pagure_title = '[' + str(info['id']) + ']: ' + info['title'] + ' by ' + info['creator']
                 # TODO: now containing all the metadata in the title, should use a more elegant solution
+                if info['content'] == '':
+                    info['content'] = "*Not specified*"
                 pagure_payload = {'title': pagure_title, 'issue_content': info['content'],
                                   'status': "Open"}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
