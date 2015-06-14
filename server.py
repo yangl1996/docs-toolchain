@@ -6,9 +6,9 @@ import requests
 listenAddr = "128.199.82.190"
 listenPort = 7654
 secretKey = ""  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
-pagureToken = "token 21HEK7SCCDNT12APRN00YJIY4AIYZM3DLXPNT8NP1275FA9MRWJZDM2ICWT8MYJX"
+pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
 # TODO: this is a test propose token
-pagureRepo = "doc-test"
+pagureRepo = "docs-test"
 
 
 class MyServer(BaseHTTPRequestHandler):
