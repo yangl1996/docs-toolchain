@@ -1,5 +1,6 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
+from urllib import parse
 import json
 import requests
 
@@ -13,8 +14,8 @@ class MyServer(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode()
         self.send_response(200)
         self.end_headers()
-        print(post_body)
         print(self.headers)
+        print(parse.parse_qs(post_body))
         print("======================")
 
 
