@@ -15,10 +15,10 @@ local_repo_path = '/root/doc-test'
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
-        # TODO: send a response to github after receiving the request
         global pagureToken
         global pagureRepo
-
+        self.send_response(200)
+        self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         if self.headers['X-Github-Event'] == 'pull_request':

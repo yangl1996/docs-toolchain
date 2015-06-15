@@ -12,6 +12,7 @@ class MyServer(BaseHTTPRequestHandler):
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         self.send_response(200)
+        self.end_headers()
         print(post_body)
         print("======================")
 
