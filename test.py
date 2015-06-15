@@ -43,6 +43,8 @@ class MyServer(BaseHTTPRequestHandler):
             new_file = r.text
             new_json = json.loads(new_file)
             new_issue_list = new_json['issues']
+            print(last_issue_list)
+            print(new_issue_list)
             difference = list(set(last_issue_list) - set(new_issue_list))
             last_issue_list = new_issue_list
             to_write = json.dumps(new_json)
