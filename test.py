@@ -14,10 +14,18 @@ last_issue_list = []
 try:
     temp_file = open(temp_file_path, 'r')
     file_content = temp_file.read()
-    last_issue_list = json.loads(file_content)['issue']
+    last_issue_list = json.loads(file_content)['issues']
     temp_file.close()
 except:
     print("No temp file found, initializing new temp file")
+    r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues")
+    new_file = r.text
+    new_json = json.loads(new_file)
+    last_issue_list = new_json['issues']
+    to_write = json.dumps(new_json)
+    writer = open(temp_file_path, 'w')
+    writer.write(to_write)
+    writer.close()
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -35,7 +43,7 @@ class MyServer(BaseHTTPRequestHandler):
             new_file = r.text
             new_json = json.loads(new_file)
             new_issue_list = new_json['issues']
-            difference = last_issue_list - new_issue_list
+            difference = list(set(last_issue_list) - set(new_issue_list))
             last_issue_list = new_issue_list
             to_write = json.dumps(new_json)
             writer = open(temp_file_path, 'w')
