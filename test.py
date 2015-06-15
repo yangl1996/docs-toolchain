@@ -14,6 +14,7 @@ class MyServer(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         print(post_body)
+        print(self.headers)
         print("======================")
 
 
