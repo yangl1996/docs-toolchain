@@ -7,9 +7,11 @@ import requests
 listenAddr = "128.199.82.190"
 listenPort = 7655
 pagureRepo = "docs-test"
+pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
+pagureHeader = {"Authorization": pagureToken}
+# TODO: this is a test propose token
 
-
-r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues")
+r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
 init_file = r.text
 init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
@@ -26,7 +28,7 @@ class MyServer(BaseHTTPRequestHandler):
         print(parse.parse_qs(post_body))
         print("======================")
         if self.headers['X-Pagure-Topic'] == "issue.edit":
-            q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues")
+            q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
             new_file = q.text
             new_json = json.loads(new_file)
             new_issue_list = new_json['issues']
