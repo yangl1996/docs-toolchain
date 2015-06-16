@@ -39,7 +39,7 @@ class MyServer(BaseHTTPRequestHandler):
                     info['content'] = "*No description provided.*"
                 pagure_payload = {'title': pagure_title, 'issue_content': info['content'], 'private': False}
                 pagure_payload = {'title': 'test', 'issue_content': 'data', 'private': False}  # debug
-                pagure_payload = {'title': pagure_title, 'issue_content': info['content'], 'private': False}
+                pagure_payload = {'title': 'test111', 'issue_content': 'wow', 'private': False}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
