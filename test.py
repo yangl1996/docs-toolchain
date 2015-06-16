@@ -1,6 +1,5 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
-from urllib import parse
 import json
 import requests
 import threading
@@ -11,11 +10,17 @@ pagureRepo = "docs-test"
 pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
 pagureHeader = {"Authorization": pagureToken}
 # TODO: this is a test propose token
+githubToken = "token "
+githubHeader = {"Authorization": githubToken}
+
+# TODO: how to handle merge conflict
 
 r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
 init_file = r.text
 init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
+githubUsername = "yangl1996"
+githubRepo = "doc-test"
 
 
 def search_for_fixed():
@@ -37,6 +42,16 @@ def search_for_fixed():
     deleted_title = difference[0]['title']
     print("Fixed: ", deleted_title)
     # TODO: need sync to github
+    PR_id = int(deleted_title[1:deleted_title.find(' ')])
+    r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
+                     headers=githubHeader)
+    return_data = json.loads(r.text)
+    PR_sha = return_data['head']['sha']
+    merge_payload = {"commit_message": "Merge pull request" + str(PR_id), "sha": PR_sha}
+    r = requests.put('https://api.github.com/repos/{}/{}/pulls/{}/merge'.format(githubUsername, githubRepo, PR_id),
+                     headers=githubHeader, data=merge_payload)
+    print(r.text)
+
 
 def search_for_added():
     time.sleep(1)

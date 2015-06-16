@@ -29,7 +29,7 @@ class MyServer(BaseHTTPRequestHandler):
             if data['action'] == 'opened':
                 print("New Pull Request opened")
                 info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
-                        'id': data['pull_request']['id'], 'link': data['pull_request']['html_url'],
+                        'id': data['pull_request']['number'], 'link': data['pull_request']['html_url'],
                         'content': data['pull_request']['body']}
                 pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])
                 # TODO: now containing all the metadata in the title, should use a more elegant solution
