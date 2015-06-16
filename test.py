@@ -38,6 +38,7 @@ class MyServer(BaseHTTPRequestHandler):
             new_json = json.loads(new_file)
             new_issue_list = new_json['issues']
             difference = [item for item in last_issue_list if item not in new_issue_list]
+            print(difference)
             last_issue_list = new_issue_list
             to_write = json.dumps(new_json)
             writer = open(temp_file_path, 'w')
