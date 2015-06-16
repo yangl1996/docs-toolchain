@@ -37,8 +37,9 @@ class MyServer(BaseHTTPRequestHandler):
                 # TODO: now containing all the metadata in the title, should use a more elegant solution
                 if not info['content']:
                     info['content'] = "*No description provided.*"
-                pagure_payload = {'title': "pagure_title", 'issue_content': "infocontent", 'private': False}
+                pagure_payload = {'title': pagure_title, 'issue_content': info['content'], 'private': False}
                 pagure_payload = {'title': 'test', 'issue_content': 'data', 'private': False}  # debug
+                pagure_payload = {'title': pagure_title, 'issue_content': info['content'], 'private': False}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
