@@ -7,19 +7,12 @@ import requests
 listenAddr = "128.199.82.190"
 listenPort = 7655
 pagureRepo = "docs-test"
-temp_file_path = "temp.json"
-
-last_issue_list = []
 
 
 r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues")
-new_file = r.text
-new_json = json.loads(new_file)
-last_issue_list = new_json['issues']
-to_write = json.dumps(new_json)
-writer = open(temp_file_path, 'w')
-writer.write(to_write)
-writer.close()
+init_file = r.text
+init_json = json.loads(init_file)
+last_issue_list = init_json['issues']
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -33,16 +26,14 @@ class MyServer(BaseHTTPRequestHandler):
         print(parse.parse_qs(post_body))
         print("======================")
         if self.headers['X-Pagure-Topic'] == "issue.edit":
-            r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues")
-            new_file = r.text
+            q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues")
+            new_file = q.text
             new_json = json.loads(new_file)
             new_issue_list = new_json['issues']
+            print(new_issue_list)
+            print(last_issue_list)
             difference = [item for item in last_issue_list if item not in new_issue_list]
             last_issue_list = new_issue_list
-            to_write = json.dumps(new_json)
-            writer = open(temp_file_path, 'w')
-            writer.write(to_write)
-            writer.close()
             deleted_title = difference[0]['title']
             print(deleted_title)
             print("=========END INFO=========")
