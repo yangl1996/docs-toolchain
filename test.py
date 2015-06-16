@@ -34,6 +34,7 @@ class MyServer(BaseHTTPRequestHandler):
             new_issue_list = new_json['issues']
             difference = [item for item in last_issue_list if item not in new_issue_list]
             while not difference:
+                time.sleep(1)  # wait for 1 second
                 q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
                 new_file = q.text
                 new_json = json.loads(new_file)
