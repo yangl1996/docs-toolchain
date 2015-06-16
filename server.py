@@ -38,10 +38,11 @@ class MyServer(BaseHTTPRequestHandler):
                 if info['content'] == '':
                     info['content'] = "*No description provided.*"
                 pagure_payload = {'title': pagure_title, 'issue_content': info['content'], 'private': False}
-                print(pagure_payload)
+                print(pagure_payload)  # debug
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
+                print(r.url)  # debug
                 print(r.text)
 
             elif data['action'] == 'closed':
