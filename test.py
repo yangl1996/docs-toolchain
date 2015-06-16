@@ -19,6 +19,7 @@ last_issue_list = init_json['issues']
 
 
 def search_for_fixed():
+    time.sleep(1)
     global last_issue_list
     q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
     new_file = q.text
@@ -34,9 +35,29 @@ def search_for_fixed():
         difference = [item for item in last_issue_list if item not in new_issue_list]
     last_issue_list = new_issue_list
     deleted_title = difference[0]['title']
-    print(deleted_title)
+    print("Fixed: ", deleted_title)
     print("=========END INFO=========")
     # TODO: need sync to github
+
+def search_for_added():
+    time.sleep(1)
+    global last_issue_list
+    q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
+    new_file = q.text
+    new_json = json.loads(new_file)
+    new_issue_list = new_json['issues']
+    difference = [item for item in new_issue_list if item not in last_issue_list]
+    while not difference:
+        time.sleep(1)  # wait for 1 second
+        q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
+        new_file = q.text
+        new_json = json.loads(new_file)
+        new_issue_list = new_json['issues']
+        difference = [item for item in new_issue_list if item not in last_issue_list]
+    last_issue_list = new_issue_list
+    added_title = difference[0]['title']
+    print("Added: ", added_title)
+    print("=========END INFO=========")
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -53,10 +74,8 @@ class MyServer(BaseHTTPRequestHandler):
             th = threading.Thread(target=search_for_fixed)
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":
-            q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-            last_file = q.text
-            last_json = json.loads(last_file)
-            last_issue_list = last_json['issues']
+            th = threading.Thread(target=search_for_added)
+            th.start()
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
