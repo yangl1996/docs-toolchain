@@ -36,7 +36,6 @@ def search_for_fixed():
     last_issue_list = new_issue_list
     deleted_title = difference[0]['title']
     print("Fixed: ", deleted_title)
-    print("=========END INFO=========")
     # TODO: need sync to github
 
 def search_for_added():
@@ -57,7 +56,6 @@ def search_for_added():
     last_issue_list = new_issue_list
     added_title = difference[0]['title']
     print("Added: ", added_title)
-    print("=========END INFO=========")
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -67,9 +65,6 @@ class MyServer(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode()
         self.send_response(200)
         self.end_headers()
-        print(self.headers)
-        print(parse.parse_qs(post_body))
-        print("======================")
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=search_for_fixed)
             th.start()

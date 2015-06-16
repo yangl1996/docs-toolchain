@@ -31,9 +31,6 @@ class MyServer(BaseHTTPRequestHandler):
                 info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
                         'id': data['pull_request']['id'], 'link': data['pull_request']['html_url'],
                         'content': data['pull_request']['body']}
-                to_print = json.dumps(info, sort_keys=True, indent=2)
-                print(to_print)
-                print("======================================")
                 pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])
                 # TODO: now containing all the metadata in the title, should use a more elegant solution
                 if not info['content']:
