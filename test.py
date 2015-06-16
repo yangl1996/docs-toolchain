@@ -47,7 +47,7 @@ def search_for_fixed():
                      headers=githubHeader)
     return_data = json.loads(r.text)
     PR_sha = return_data['head']['sha']
-    merge_payload = {"commit_message": "Merge pull request" + str(PR_id), "sha": PR_sha}
+    merge_payload = json.dumps({"commit_message": "Merge pull request" + str(PR_id), "sha": PR_sha})
     r = requests.put('https://api.github.com/repos/{}/{}/pulls/{}/merge'.format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader, data=merge_payload)
     print(r.text)
