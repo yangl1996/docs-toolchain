@@ -33,11 +33,11 @@ class MyServer(BaseHTTPRequestHandler):
                 to_print = json.dumps(info, sort_keys=True, indent=2)
                 print(to_print)
                 print("======================================")
-                pagure_title = "[{}]: {} by {}".format(str(info['id']), info['title'], info['creator'])
+                pagure_title = "[{}] {} by {}".format(str(info['id']), info['title'], info['creator'])
                 # TODO: now containing all the metadata in the title, should use a more elegant solution
                 if not info['content']:
                     info['content'] = "*No description provided.*"
-                pagure_payload = {'title': 'Uest111 by yangl1996', 'issue_content': info['content'], 'private': False}
+                pagure_payload = {'title': pagure_title, 'issue_content': info['content'], 'private': False}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
