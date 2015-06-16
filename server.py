@@ -12,6 +12,7 @@ pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0
 pagureRepo = "docs-test"
 local_repo_path = '/root/doc-test'
 
+# TODO: now can't handle special character (Pagure don't support), should auto delete special characters
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
