@@ -40,7 +40,11 @@ class MyServer(BaseHTTPRequestHandler):
             print(deleted_title)
             print("=========END INFO=========")
             # TODO: need sync to github
-
+        if self.headers['X-Pagure-Topic'] == "issue.new":
+            q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
+            last_file = q.text
+            last_json = json.loads(last_file)
+            last_issue_list = last_json['issues']
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
