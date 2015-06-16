@@ -3,6 +3,7 @@ import time
 from urllib import parse
 import json
 import requests
+import threading
 
 listenAddr = "128.199.82.190"
 listenPort = 7655
@@ -17,6 +18,27 @@ init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
 
 
+def search_for_fixed():
+    global last_issue_list
+    q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
+    new_file = q.text
+    new_json = json.loads(new_file)
+    new_issue_list = new_json['issues']
+    difference = [item for item in last_issue_list if item not in new_issue_list]
+    while not difference:
+        time.sleep(1)  # wait for 1 second
+        q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
+        new_file = q.text
+        new_json = json.loads(new_file)
+        new_issue_list = new_json['issues']
+        difference = [item for item in last_issue_list if item not in new_issue_list]
+    last_issue_list = new_issue_list
+    deleted_title = difference[0]['title']
+    print(deleted_title)
+    print("=========END INFO=========")
+    # TODO: need sync to github
+
+
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
         global last_issue_list
@@ -28,23 +50,8 @@ class MyServer(BaseHTTPRequestHandler):
         print(parse.parse_qs(post_body))
         print("======================")
         if self.headers['X-Pagure-Topic'] == "issue.edit":
-            q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-            new_file = q.text
-            new_json = json.loads(new_file)
-            new_issue_list = new_json['issues']
-            difference = [item for item in last_issue_list if item not in new_issue_list]
-            while not difference:
-                time.sleep(1)  # wait for 1 second
-                q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-                new_file = q.text
-                new_json = json.loads(new_file)
-                new_issue_list = new_json['issues']
-                difference = [item for item in last_issue_list if item not in new_issue_list]
-            last_issue_list = new_issue_list
-            deleted_title = difference[0]['title']
-            print(deleted_title)
-            print("=========END INFO=========")
-            # TODO: need sync to github
+            th = threading.Thread(target=search_for_fixed)
+            th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":
             q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
             last_file = q.text
