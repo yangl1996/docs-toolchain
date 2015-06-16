@@ -32,9 +32,13 @@ class MyServer(BaseHTTPRequestHandler):
             new_file = q.text
             new_json = json.loads(new_file)
             new_issue_list = new_json['issues']
-            print(new_issue_list)
-            print(last_issue_list)
             difference = [item for item in last_issue_list if item not in new_issue_list]
+            while not difference:
+                q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
+                new_file = q.text
+                new_json = json.loads(new_file)
+                new_issue_list = new_json['issues']
+                difference = [item for item in last_issue_list if item not in new_issue_list]
             last_issue_list = new_issue_list
             deleted_title = difference[0]['title']
             print(deleted_title)
