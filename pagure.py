@@ -18,6 +18,8 @@ pagureHeader = {"Authorization": "token " + pagureToken}
 pagureSecretKey = config.pagureSecretKey  # TODO: implement the signature security feature of pagure webhook
 githubToken = config.githubToken
 githubHeader = {"Authorization": "token " + githubToken}
+githubUsername = config.githubUsername
+githubRepo = config.githubRepo
 
 # TODO: how to handle merge conflict
 
@@ -25,8 +27,6 @@ r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pa
 init_file = r.text
 init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
-githubUsername = "yangl1996"
-githubRepo = "doc-test"
 
 
 def search_for_fixed():
