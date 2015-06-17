@@ -3,19 +3,22 @@ import time
 import json
 import requests
 import os
+try:
+    import config_sample as config
+except "No such file or directory":
+    print("Please set up your config.py file.")
 
-listenAddr = "128.199.82.190"
-listenPort = 7654
-secretKey = ""  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
-pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
-# TODO: this is a test propose token
-pagureRepo = "docs-test"
-local_repo_path = '/root/doc-test'
+listenAddr = config.listenAddr
+listenPort = config.githubPort
+secretKey = config.githubSecretKey  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
+pagureToken = config.pagureToken
+pagureRepo = config.pagureRepo
+localRepoPath = config.localRepoPath
 
-githubToken = "token "
+githubToken = config.githubToken
 githubHeader = {"Authorization": githubToken}
-githubUsername = "kunaaljain"
-githubRepo = "centos-docs"
+githubUsername = config.githubUsername
+githubRepo = config.githubRepo
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -63,7 +66,7 @@ class MyServer(BaseHTTPRequestHandler):
                 else:
                     # TODO: is there a more elegant way to do this?
                     print("Changes merged")
-                    command = "cd " + local_repo_path + """
+                    command = "cd " + localRepoPath + """
                     git pull origin master
                     git push pagure master
                     """

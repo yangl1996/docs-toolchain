@@ -3,15 +3,21 @@ import time
 import json
 import requests
 import threading
+try:
+    import config
+except "No such file or directory":
+    import config_sample as config
+    print("Please set up your config.py file. Exiting.")
+    exit()
 
-listenAddr = "128.199.82.190"
-listenPort = 7655
-pagureRepo = "docs-test"
-pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
-pagureHeader = {"Authorization": pagureToken}
-# TODO: this is a test propose token
-githubToken = "token "
-githubHeader = {"Authorization": githubToken}
+listenAddr = config.listenAddr
+listenPort = config.pagurePort
+pagureRepo = config.pagureRepo
+pagureToken = config.pagureToken
+pagureHeader = {"Authorization": "token " + pagureToken}
+pagureSecretKey = config.pagureSecretKey  # TODO: implement the signature security feature of pagure webhook
+githubToken = config.githubToken
+githubHeader = {"Authorization": "token " + githubToken}
 
 # TODO: how to handle merge conflict
 
