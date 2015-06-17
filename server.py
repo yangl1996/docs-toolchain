@@ -12,6 +12,11 @@ pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0
 pagureRepo = "docs-test"
 local_repo_path = '/root/doc-test'
 
+githubToken = "token "
+githubHeader = {"Authorization": githubToken}
+githubUsername = "kunaaljain"
+githubRepo = "centos-docs"
+
 # TODO: now can't handle special character (Pagure don't support), should auto delete special characters
 
 class MyServer(BaseHTTPRequestHandler):
@@ -35,7 +40,15 @@ class MyServer(BaseHTTPRequestHandler):
                 # TODO: now containing all the metadata in the title, should use a more elegant solution
                 if not info['content']:
                     info['content'] = "*No description provided.*"
-                pagure_payload = {'title': pagure_title, 'issue_content': info['content']}
+                PR_id = str(info['id'])
+                r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
+                data = json.loads(r.text)
+                filelist = ''
+                for i in data:
+                    filelist += "###{}\n\n".format(i['filename'])
+
+                pagure_content = "##Files Modified\n\n{}\n\n##PR ID : #{}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist,PR_id,info['creator'],info['content'])
+                pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
