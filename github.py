@@ -16,7 +16,7 @@ pagureRepo = config.pagureRepo
 localRepoPath = config.localRepoPath
 
 githubToken = config.githubToken
-githubHeader = {"Authorization": githubToken}
+githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
 githubRepo = config.githubRepo
 
@@ -58,7 +58,7 @@ class MyServer(BaseHTTPRequestHandler):
                 pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist,PR_HTML_Link,info['creator'],info['content'])
                 pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
-                pagure_head = {"Authorization": pagureToken}
+                pagure_head = {"Authorization": "token " + pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
                 print(r.text)
 
