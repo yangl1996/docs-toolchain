@@ -47,7 +47,9 @@ class MyServer(BaseHTTPRequestHandler):
                 for i in data:
                     filelist += "###{}\n\n".format(i['filename'])
 
-                pagure_content = "##Files Modified\n\n{}\n\n##PR ID : #{}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist,PR_id,info['creator'],info['content'])
+                PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
+
+                pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist,PR_HTML_Link,info['creator'],info['content'])
                 pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": pagureToken}
