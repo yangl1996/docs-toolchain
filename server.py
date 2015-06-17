@@ -17,7 +17,6 @@ githubHeader = {"Authorization": githubToken}
 githubUsername = "kunaaljain"
 githubRepo = "centos-docs"
 
-# TODO: now can't handle special character (Pagure don't support), should auto delete special characters
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
