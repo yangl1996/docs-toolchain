@@ -4,9 +4,11 @@ import json
 import requests
 import os
 try:
-    import config_sample as config
+    import config
 except "No such file or directory":
-    print("Please set up your config.py file.")
+    import config_sample as config
+    print("Please set up your config.py file. Exiting.")
+    exit()
 
 listenAddr = config.listenAddr
 listenPort = config.githubPort
