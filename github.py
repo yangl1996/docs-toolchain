@@ -46,6 +46,10 @@ class MyServer(BaseHTTPRequestHandler):
                 r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
                 data = json.loads(r.text)
                 filelist = ''
+                # DEBUG
+                print("========DEBUG========")
+                print(data)
+                print("========DEBUG========")
                 for changed_file in data:
                     filelist += "###{}\n\n".format(changed_file['filename'])
 
