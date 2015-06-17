@@ -3,15 +3,23 @@ import time
 import json
 import requests
 import threading
+try:
+    import config
+except "No such file or directory":
+    import config_sample as config
+    print("Please set up your config.py file. Exiting.")
+    exit()
 
-listenAddr = "128.199.82.190"
-listenPort = 7655
-pagureRepo = "docs-test"
-pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
-pagureHeader = {"Authorization": pagureToken}
-# TODO: this is a test propose token
-githubToken = "token "
-githubHeader = {"Authorization": githubToken}
+listenAddr = config.listenAddr
+listenPort = config.pagurePort
+pagureRepo = config.pagureRepo
+pagureToken = config.pagureToken
+pagureHeader = {"Authorization": "token " + pagureToken}
+pagureSecretKey = config.pagureSecretKey  # TODO: implement the signature security feature of pagure webhook
+githubToken = config.githubToken
+githubHeader = {"Authorization": "token " + githubToken}
+githubUsername = config.githubUsername
+githubRepo = config.githubRepo
 
 # TODO: how to handle merge conflict
 
@@ -19,8 +27,6 @@ r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pa
 init_file = r.text
 init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
-githubUsername = "yangl1996"
-githubRepo = "doc-test"
 
 
 def search_for_fixed():

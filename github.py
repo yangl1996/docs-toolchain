@@ -3,19 +3,24 @@ import time
 import json
 import requests
 import os
+try:
+    import config
+except "No such file or directory":
+    import config_sample as config
+    print("Please set up your config.py file. Exiting.")
+    exit()
 
-listenAddr = "128.199.82.190"
-listenPort = 7654
-secretKey = ""  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
-pagureToken = "token L984SSW08QBFVEHF5IXVVWT9HNQJTX8HNSUM2XL6ECV7KUFKD7HHCYROIG0ZGGEJ"
-# TODO: this is a test propose token
-pagureRepo = "docs-test"
-local_repo_path = '/root/doc-test'
+listenAddr = config.listenAddr
+listenPort = config.githubPort
+secretKey = config.githubSecretKey  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
+pagureToken = config.pagureToken
+pagureRepo = config.pagureRepo
+localRepoPath = config.localRepoPath
 
-githubToken = "token "
-githubHeader = {"Authorization": githubToken}
-githubUsername = "kunaaljain"
-githubRepo = "centos-docs"
+githubToken = config.githubToken
+githubHeader = {"Authorization": "token " + githubToken}
+githubUsername = config.githubUsername
+githubRepo = config.githubRepo
 
 
 class MyServer(BaseHTTPRequestHandler):
@@ -43,15 +48,15 @@ class MyServer(BaseHTTPRequestHandler):
                 r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
                 data = json.loads(r.text)
                 filelist = ''
-                for i in data:
-                    filelist += "###{}\n\n".format(i['filename'])
+                for changed_file in data:
+                    filelist += "###{}\n\n".format(changed_file['filename'])
 
                 PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
 
                 pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist,PR_HTML_Link,info['creator'],info['content'])
                 pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
-                pagure_head = {"Authorization": pagureToken}
+                pagure_head = {"Authorization": "token " + pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
                 print(r.text)
 
@@ -63,7 +68,7 @@ class MyServer(BaseHTTPRequestHandler):
                 else:
                     # TODO: is there a more elegant way to do this?
                     print("Changes merged")
-                    command = "cd " + local_repo_path + """
+                    command = "cd " + localRepoPath + """
                     git pull origin master
                     git push pagure master
                     """
