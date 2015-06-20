@@ -90,9 +90,7 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
 
         # Validate signature
-        sha_name, signature = self.headers['X-Pagure-Signature'].split('=')
-        if sha_name != 'sha1':
-            return
+        signature = self.headers['X-Pagure-Signature']
         mac = hmac.new(pagureSecretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
         if not hmac.compare_digest(mac.hexdigest(), signature):
             print("Invalid signature, ignoring this call")
