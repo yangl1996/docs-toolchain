@@ -51,18 +51,17 @@ class MyServer(BaseHTTPRequestHandler):
                 for changed_file in data:
                     filelist += "###{}\n\n".format(changed_file['filename'])
 
-                PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
+                PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
+                github_payload = {"body" : "Please find the issue corresponding to this Pull request here: https://pagure.io/docs-test/issues"}
+                r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
+                print(r.text)
 
+                PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
                 pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist,PR_HTML_Link,info['creator'],info['content'])
                 pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
                 pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
                 pagure_head = {"Authorization": "token " + pagureToken}
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
-                print(r.text)
-
-                PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
-                github_payload = {"body" : "Please find the issue corresponding to this Pull request here: https://pagure.io/docs-test/issues"}
-                r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
                 print(r.text)
 
             elif data['action'] == 'closed':
