@@ -60,6 +60,11 @@ class MyServer(BaseHTTPRequestHandler):
                 r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
                 print(r.text)
 
+                PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
+                github_payload = {"body" : "Please find the issue corresponding to this Pull request here: https://pagure.io/docs-test/issues"}
+                r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
+                print(r.text)
+
             elif data['action'] == 'closed':
                 if not data['pull_request']['merged']:
                     # TODO: insufficient pagure API
