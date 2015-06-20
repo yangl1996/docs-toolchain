@@ -30,13 +30,16 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
+        signature = self.headers['X-Hub-Signature']
+        signature_checker = hmac.new(secretKey.encode(), post_body)
+        print(signature)
+        print("------")
+        print(signature_checker.digest())
+        if not hmac.compare_digest(signature_checker.digest(), signature):
+            print("Invalid signature, ignoring this call")
+            return
         if self.headers['X-Github-Event'] == 'pull_request':
             data = json.loads(post_body)
-            signature = self.headers['X-Hub-Signature']
-            signature_checker = hmac.new(secretKey.encode(), post_body)
-            if not hmac.compare_digest(signature_checker.digest(), signature):
-                print("Invalid signature, ignoring this call")
-                return
 
             # new PR opened
             if data['action'] == 'opened':
