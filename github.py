@@ -14,7 +14,7 @@ except "No such file or directory":
 
 listenAddr = config.listenAddr
 listenPort = config.githubPort
-secretKey = config.githubSecretKey  # TODO:implement the secure feature of GitHub web hook (verify SHA1 signature)
+secretKey = config.githubSecretKey
 pagureToken = config.pagureToken
 pagureRepo = config.pagureRepo
 localRepoPath = config.localRepoPath
