@@ -3,6 +3,8 @@ import time
 import json
 import requests
 import threading
+import hmac
+import hashlib
 try:
     import config
 except "No such file or directory":
@@ -15,7 +17,7 @@ listenPort = config.pagurePort
 pagureRepo = config.pagureRepo
 pagureToken = config.pagureToken
 pagureHeader = {"Authorization": "token " + pagureToken}
-pagureSecretKey = config.pagureSecretKey  # TODO: implement the signature security feature of pagure webhook
+pagureSecretKey = config.pagureSecretKey
 githubToken = config.githubToken
 githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
@@ -86,6 +88,16 @@ class MyServer(BaseHTTPRequestHandler):
         post_body = self.rfile.read(content_len).decode()
         self.send_response(200)
         self.end_headers()
+
+        # Validate signature
+        sha_name, signature = self.headers['X-Pagure-Signature'].split('=')
+        if sha_name != 'sha1':
+            return
+        mac = hmac.new(pagureSecretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
+        if not hmac.compare_digest(mac.hexdigest(), signature):
+            print("Invalid signature, ignoring this call")
+            return
+
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=search_for_fixed)
             th.start()
