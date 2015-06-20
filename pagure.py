@@ -89,12 +89,14 @@ class MyServer(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
 
+        """
         # Validate signature
         signature = self.headers['X-Pagure-Signature']
         mac = hmac.new(pagureSecretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
         if not hmac.compare_digest(mac.hexdigest(), signature):
             print("Invalid signature, ignoring this call")
             return
+        """
 
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=search_for_fixed)
