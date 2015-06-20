@@ -31,7 +31,7 @@ class MyServer(BaseHTTPRequestHandler):
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         signature = self.headers['X-Hub-Signature']
-        signature_checker = hmac.new(secretKey.encode(), post_body)
+        signature_checker = hmac.new(secretKey.encode(), post_body.encode())
         print(signature)
         print("------")
         print(signature_checker.digest())
