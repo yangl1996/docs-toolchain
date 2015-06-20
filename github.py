@@ -31,6 +31,8 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
+
+        # Validate signature
         sha_name, signature = self.headers['X-Hub-Signature'].split('=')
         if sha_name != 'sha1':
             return
@@ -38,6 +40,8 @@ class MyServer(BaseHTTPRequestHandler):
         if not hmac.compare_digest(mac.hexdigest(), signature):
             print("Invalid signature, ignoring this call")
             return
+
+        # Handle post body
         if self.headers['X-Github-Event'] == 'pull_request':
             data = json.loads(post_body)
 
