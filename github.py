@@ -3,6 +3,7 @@ import time
 import json
 import requests
 import os
+import hmac
 try:
     import config
 except "No such file or directory":
@@ -25,14 +26,17 @@ githubRepo = config.githubRepo
 
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
-        global pagureToken
-        global pagureRepo
         self.send_response(200)
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         if self.headers['X-Github-Event'] == 'pull_request':
             data = json.loads(post_body)
+            signature = self.headers['X-Hub-Signature']
+            signature_checker = hmac.new(secretKey.encode(), post_body)
+            if not hmac.compare_digest(signature_checker.digest(), signature):
+                print("Invalid signature, ignoring this call")
+                return
 
             # new PR opened
             if data['action'] == 'opened':
