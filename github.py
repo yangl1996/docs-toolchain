@@ -35,7 +35,7 @@ class MyServer(BaseHTTPRequestHandler):
         print(signature)
         print("------")
         print(signature_checker.digest())
-        if not hmac.compare_digest(signature_checker.digest(), signature):
+        if not hmac.compare_digest(signature_checker.digest(), signature.encode()):
             print("Invalid signature, ignoring this call")
             return
         if self.headers['X-Github-Event'] == 'pull_request':
