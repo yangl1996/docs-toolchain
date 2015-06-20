@@ -4,6 +4,7 @@ import json
 import requests
 import os
 import hmac
+import hashlib
 try:
     import config
 except "No such file or directory":
@@ -30,12 +31,11 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
-        signature = self.headers['X-Hub-Signature']
-        signature_checker = hmac.new(secretKey.encode(), post_body.encode())
-        print(signature)
-        print("------")
-        print(signature_checker.digest())
-        if not hmac.compare_digest(signature_checker.digest(), signature.encode()):
+        sha_name, signature = self.headers['X-Hub-Signature'].split('=')
+        if sha_name != 'sha1':
+            return
+        mac = hmac.new(secretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
+        if not hmac.compare_digest(mac.hexdigest(), signature):
             print("Invalid signature, ignoring this call")
             return
         if self.headers['X-Github-Event'] == 'pull_request':
