@@ -49,7 +49,6 @@ def search_for_fixed():
     last_issue_list = new_issue_list
     deleted_title = difference[0]['title']
     print("Fixed: ", deleted_title)
-    # TODO: need sync to github
     PR_id = int(deleted_title[1:deleted_title.find(' ')])
     r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader)
