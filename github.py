@@ -80,6 +80,7 @@ class MyServer(BaseHTTPRequestHandler):
 
         # Validate signature
         sha_name, signature = self.headers['X-Hub-Signature'].split('=')
+
         if sha_name != 'sha1':
             return
         mac = hmac.new(secretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)

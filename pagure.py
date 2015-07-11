@@ -31,7 +31,7 @@ init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
 
 
-def search_for_fixed():
+def handle_fixed():
     time.sleep(1)
     global last_issue_list
     q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
@@ -60,7 +60,7 @@ def search_for_fixed():
     print(r.text)
 
 
-def search_for_added():
+def handle_added():
     time.sleep(1)
     global last_issue_list
     q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
@@ -98,10 +98,10 @@ class MyServer(BaseHTTPRequestHandler):
         """
 
         if self.headers['X-Pagure-Topic'] == "issue.edit":
-            th = threading.Thread(target=search_for_fixed)
+            th = threading.Thread(target=handle_fixed)
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":
-            th = threading.Thread(target=search_for_added)
+            th = threading.Thread(target=handle_added)
             th.start()
 
 
