@@ -3,6 +3,7 @@ import time
 import json
 import requests
 import threading
+import urllib.parse
 import hmac
 import hashlib
 try:
@@ -25,31 +26,11 @@ githubRepo = config.githubRepo
 
 # TODO: how to handle merge conflict
 
-r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-init_file = r.text
-init_json = json.loads(init_file)
-last_issue_list = init_json['issues']
 
-
-def search_for_fixed():
-    time.sleep(1)
-    global last_issue_list
-    q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-    new_file = q.text
-    new_json = json.loads(new_file)
-    new_issue_list = new_json['issues']
-    difference = [item for item in last_issue_list if item not in new_issue_list]
-    while not difference:
-        time.sleep(1)  # wait for 1 second
-        q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-        new_file = q.text
-        new_json = json.loads(new_file)
-        new_issue_list = new_json['issues']
-        difference = [item for item in last_issue_list if item not in new_issue_list]
-    last_issue_list = new_issue_list
-    deleted_title = difference[0]['title']
+def handle_fixed(post_body):
+    data = json.loads(post_body)
+    deleted_title = data['msg']['issue']['title']
     print("Fixed: ", deleted_title)
-    # TODO: need sync to github
     PR_id = int(deleted_title[1:deleted_title.find(' ')])
     r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader)
@@ -61,29 +42,45 @@ def search_for_fixed():
     print(r.text)
 
 
-def search_for_added():
-    time.sleep(1)
-    global last_issue_list
-    q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-    new_file = q.text
-    new_json = json.loads(new_file)
-    new_issue_list = new_json['issues']
-    difference = [item for item in new_issue_list if item not in last_issue_list]
-    while not difference:
-        time.sleep(1)  # wait for 1 second
-        q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-        new_file = q.text
-        new_json = json.loads(new_file)
-        new_issue_list = new_json['issues']
-        difference = [item for item in new_issue_list if item not in last_issue_list]
-    last_issue_list = new_issue_list
-    added_title = difference[0]['title']
+def handle_added(post_body):
+    data = json.loads(post_body)
+    added_title = data['msg']['issue']['title']
+    added_id = data['msg']['issue']['id']
     print("Added: ", added_title)
+    PR_id = int(added_title[1:added_title.find(' ')])
+    # TODO: handle added issue (sync to GitHub issue?)
+    if added_title.startswith("#"):
+        # post a comment containing pagure issue link on github
+        PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
+        PR_Comment_Body = "[Issue #{}](https://pagure.io/docs-test/issue/{}) created on Pagure.".format(added_id, added_id)
+        github_payload = {"body": PR_Comment_Body}
+        r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
+        print(r.text)
 
 
+def handle_comment(post_body):
+    # TODO: need handle comment deletion
+    data = json.loads(post_body)
+    info = {'comment': data['msg']['issue']['comments'][-1]['comment'],
+            'issue_title': data['msg']['issue']['title'],
+            'username': data['msg']['issue']['comments'][-1]['user']['name'],
+            'fullname': data['msg']['issue']['comments'][-1]['user']['fullname']}
+    # no infinity loop
+    if info['comment'].startswith("*Commented by"):
+        return
+    comment_body = """*Commented by {} ({})*
+
+    {}""".format(info['fullname'], info['username'], info['comment'])
+    PR_id = int(info['issue_title'][1:info['issue_title'].find(' ')])
+    comment_payload = json.dumps({"body": comment_body})
+    r = requests.post("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id),
+                      headers=githubHeader, data=comment_payload)
+    print(comment_body)
+
+
+# main server class
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
-        global last_issue_list
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         self.send_response(200)
@@ -98,11 +95,17 @@ class MyServer(BaseHTTPRequestHandler):
             return
         """
 
+        post_body = urllib.parse.parse_qs(post_body)
+        post_body = post_body['payload'][0]
+
         if self.headers['X-Pagure-Topic'] == "issue.edit":
-            th = threading.Thread(target=search_for_fixed)
+            th = threading.Thread(target=handle_fixed, args=(post_body,))
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":
-            th = threading.Thread(target=search_for_added)
+            th = threading.Thread(target=handle_added, args=(post_body,))
+            th.start()
+        if self.headers['X-Pagure-Topic'] == "issue.comment.added":
+            th = threading.Thread(target=handle_comment, args=(post_body,))
             th.start()
 
 
