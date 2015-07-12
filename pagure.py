@@ -81,6 +81,12 @@ def handle_added():
     print("Added: ", added_title)
 
 
+def handle_comment(post_body):
+    data = json.loads(post_body)
+    print("===================")
+    print(post_body)
+
+
 # main server class
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -101,8 +107,9 @@ class MyServer(BaseHTTPRequestHandler):
 
         print(self.headers)
         print("============")
-        info = urllib.parse.parse_qs(post_body)
-        print(info)
+        post_body = urllib.parse.parse_qs(post_body)
+        post_body = post_body['payload'][0]
+        print(post_body)
 
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=handle_fixed)
@@ -111,7 +118,8 @@ class MyServer(BaseHTTPRequestHandler):
             th = threading.Thread(target=handle_added)
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.comment.added":
-            print("new comment")  # do something
+            th = threading.Thread(target=handle_comment, args=(post_body,))
+            th.start()
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
