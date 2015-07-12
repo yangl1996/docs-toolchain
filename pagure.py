@@ -40,6 +40,7 @@ def handle_fixed(post_body):
     r = requests.put('https://api.github.com/repos/{}/{}/pulls/{}/merge'.format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader, data=merge_payload)
     print(r.text)
+    # TODO: add a commment on github to remind to delete the branch
 
 
 def handle_added(post_body):
