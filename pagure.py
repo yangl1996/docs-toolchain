@@ -114,8 +114,6 @@ class MyServer(BaseHTTPRequestHandler):
             return
         """
 
-        print(self.headers)
-        print("============")
         post_body = urllib.parse.parse_qs(post_body)
         post_body = post_body['payload'][0]
         print(post_body)
