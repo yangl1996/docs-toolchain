@@ -32,23 +32,9 @@ init_json = json.loads(init_file)
 last_issue_list = init_json['issues']
 
 
-def handle_fixed():
-    time.sleep(1)
-    global last_issue_list
-    q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-    new_file = q.text
-    new_json = json.loads(new_file)
-    new_issue_list = new_json['issues']
-    difference = [item for item in last_issue_list if item not in new_issue_list]
-    while not difference:
-        time.sleep(1)  # wait for 1 second
-        q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-        new_file = q.text
-        new_json = json.loads(new_file)
-        new_issue_list = new_json['issues']
-        difference = [item for item in last_issue_list if item not in new_issue_list]
-    last_issue_list = new_issue_list
-    deleted_title = difference[0]['title']
+def handle_fixed(post_body):
+    data = json.loads(post_body)
+    deleted_title = data['msg']['issue']['title']
     print("Fixed: ", deleted_title)
     PR_id = int(deleted_title[1:deleted_title.find(' ')])
     r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
@@ -61,24 +47,11 @@ def handle_fixed():
     print(r.text)
 
 
-def handle_added():
-    time.sleep(1)
-    global last_issue_list
-    q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-    new_file = q.text
-    new_json = json.loads(new_file)
-    new_issue_list = new_json['issues']
-    difference = [item for item in new_issue_list if item not in last_issue_list]
-    while not difference:
-        time.sleep(1)  # wait for 1 second
-        q = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-        new_file = q.text
-        new_json = json.loads(new_file)
-        new_issue_list = new_json['issues']
-        difference = [item for item in new_issue_list if item not in last_issue_list]
-    last_issue_list = new_issue_list
-    added_title = difference[0]['title']
+def handle_added(post_body):
+    data = json.loads(post_body)
+    added_title = data['msg']['issue']['title']
     print("Added: ", added_title)
+    # TODO: handle added issue (sync to GitHub issue?)
 
 
 def handle_comment(post_body):
