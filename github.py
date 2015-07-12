@@ -98,7 +98,7 @@ class MyServer(BaseHTTPRequestHandler):
 
         # Handle post body
         if self.headers['X-Github-Event'] == 'pull_request':
-            th = threading.Thread(target=handle_pull_request, args=post_body)
+            th = threading.Thread(target=handle_pull_request, args=(post_body,))
             th.start()
 
 
