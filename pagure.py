@@ -87,10 +87,6 @@ class MyServer(BaseHTTPRequestHandler):
             return
         """
 
-        post_body = urllib.parse.parse_qs(post_body)
-        post_body = post_body['payload'][0]
-        print(post_body)
-
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=handle_fixed, args=(post_body,))
             th.start()
