@@ -80,6 +80,7 @@ def handle_added():
     print("Added: ", added_title)
 
 
+# main server class
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
         global last_issue_list

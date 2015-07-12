@@ -5,6 +5,7 @@ import requests
 import os
 import hmac
 import hashlib
+import threading
 try:
     import config
 except "No such file or directory":
@@ -12,6 +13,7 @@ except "No such file or directory":
     print("Please set up your config.py file. Exiting.")
     exit()
 
+# import configurations from config.py
 listenAddr = config.listenAddr
 listenPort = config.githubPort
 secretKey = config.githubSecretKey
@@ -24,6 +26,8 @@ githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
 githubRepo = config.githubRepo
 
+
+# handle new pull request on github
 def handle_pull_request(post_body):
     data = json.loads(post_body)
 
@@ -34,7 +38,6 @@ def handle_pull_request(post_body):
                 'id': data['pull_request']['number'], 'link': data['pull_request']['html_url'],
                 'content': data['pull_request']['body']}
         pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])
-        # TODO: now containing all the metadata in the title, should use a more elegant solution
         if not info['content']:
             info['content'] = "*No description provided.*"
         PR_id = str(info['id'])
@@ -57,11 +60,14 @@ def handle_pull_request(post_body):
         r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
         print(r.text)
 
+    # PR closed
     elif data['action'] == 'closed':
+        # not merged
         if not data['pull_request']['merged']:
-            # TODO: insufficient pagure API
+            # TODO: insufficient pagure API, we can directly modify the ticket repo
             print("Pull request deleted without being merged")
 
+        # merged
         else:
             # TODO: is there a more elegant way to do this?
             print("Changes merged")
@@ -71,6 +77,8 @@ def handle_pull_request(post_body):
             """
             os.system(command)
 
+
+# main server class
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
         self.send_response(200)
