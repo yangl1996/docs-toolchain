@@ -26,11 +26,6 @@ githubRepo = config.githubRepo
 
 # TODO: how to handle merge conflict
 
-r = requests.get("https://pagure.io/api/0/" + pagureRepo + "/issues", headers=pagureHeader)
-init_file = r.text
-init_json = json.loads(init_file)
-last_issue_list = init_json['issues']
-
 
 def handle_fixed(post_body):
     data = json.loads(post_body)
@@ -72,7 +67,6 @@ def handle_comment(post_body):
 # main server class
 class MyServer(BaseHTTPRequestHandler):
     def do_POST(self):
-        global last_issue_list
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
         self.send_response(200)
@@ -86,6 +80,9 @@ class MyServer(BaseHTTPRequestHandler):
             print("Invalid signature, ignoring this call")
             return
         """
+        
+        post_body = urllib.parse.parse_qs(post_body)
+        post_body = post_body['payload'][0]
 
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=handle_fixed, args=(post_body,))
