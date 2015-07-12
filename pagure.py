@@ -68,7 +68,8 @@ def handle_comment(post_body):
     # no infinity loop
     if info['comment'].startswith("*Commented by"):
         return
-    comment_body = """*Commented by {}({})*
+    comment_body = """*Commented by {} ({})*
+
     {}""".format(info['fullname'], info['username'], info['comment'])
     PR_id = int(info['issue_title'][1:info['issue_title'].find(' ')])
     comment_payload = json.dumps({"body": comment_body})

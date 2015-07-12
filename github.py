@@ -93,6 +93,7 @@ def handle_pull_request_comment(post_body):
 
         # prepare pagure comment body
         comment_body = """*Commented by {}*
+        
         {}""".format(info['username'], info['comment'])
 
         # get pagure issue id
