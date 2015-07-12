@@ -104,6 +104,10 @@ class MyServer(BaseHTTPRequestHandler):
         if self.headers['X-Pagure-Topic'] == "issue.new":
             th = threading.Thread(target=handle_added)
             th.start()
+        else:
+            print(self.headers)
+            print("============")
+            print(post_body)
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
