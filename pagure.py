@@ -57,6 +57,7 @@ def handle_added(post_body):
         r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
         print(r.text)
 
+
 def handle_comment(post_body):
     # TODO: need handle comment deletion
     data = json.loads(post_body)
@@ -64,6 +65,9 @@ def handle_comment(post_body):
             'issue_title': data['msg']['issue']['title'],
             'username': data['msg']['issue']['comments'][-1]['user']['name'],
             'fullname': data['msg']['issue']['comments'][-1]['user']['fullname']}
+    # no infinity loop
+    if info['comment'].startswith("*Commented by"):
+        return
     comment_body = """*Commented by {}({})*
     {}""".format(info['fullname'], info['username'], info['comment'])
     PR_id = int(info['issue_title'][1:info['issue_title'].find(' ')])

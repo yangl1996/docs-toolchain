@@ -87,6 +87,9 @@ def handle_pull_request_comment(post_body):
         # we auto create an comment pointing to pagure when new PR is opened, should ignore this one
         if info['comment'].startswith("[Issue #"):
             return
+        # no infinity loop
+        if info['comment'].startswith("*Commented by"):
+            return
 
         # prepare pagure comment body
         comment_body = """*Commented by {}*
