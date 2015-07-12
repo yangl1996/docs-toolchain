@@ -3,6 +3,7 @@ import time
 import json
 import requests
 import threading
+import urllib.parse
 import hmac
 import hashlib
 try:
@@ -98,16 +99,19 @@ class MyServer(BaseHTTPRequestHandler):
             return
         """
 
+        print(self.headers)
+        print("============")
+        info = urllib.parse.parse_qs(post_body)
+        print(info)
+
         if self.headers['X-Pagure-Topic'] == "issue.edit":
             th = threading.Thread(target=handle_fixed)
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":
             th = threading.Thread(target=handle_added)
             th.start()
-        else:
-            print(self.headers)
-            print("============")
-            print(post_body)
+        if self.headers['X-Pagure-Topic'] == "issue.comment.added":
+            print("new comment")  # do something
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
