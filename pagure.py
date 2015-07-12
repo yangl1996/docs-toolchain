@@ -92,10 +92,10 @@ class MyServer(BaseHTTPRequestHandler):
         print(post_body)
 
         if self.headers['X-Pagure-Topic'] == "issue.edit":
-            th = threading.Thread(target=handle_fixed)
+            th = threading.Thread(target=handle_fixed, args=(post_body,))
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":
-            th = threading.Thread(target=handle_added)
+            th = threading.Thread(target=handle_added, args=(post_body,))
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.comment.added":
             th = threading.Thread(target=handle_comment, args=(post_body,))
