@@ -83,8 +83,17 @@ def handle_added():
 
 def handle_comment(post_body):
     data = json.loads(post_body)
-    print("===================")
-    print(post_body)
+    info = {'comment': data['msg']['issue']['comments'][-1]['comment'],
+            'issue_title': data['msg']['issue']['title'],
+            'username': data['msg']['issue']['comments'][-1]['user']['name'],
+            'fullname': data['msg']['issue']['comments'][-1]['user']['fullname']}
+    comment_body = """*Commented by {}({})*
+    {}""".format(info['fullname'], info['username'], info['comment'])
+    PR_id = int(info['issue_title'][1:info['issue_title'].find(' ')])
+    comment_payload = json.dumps({"body": comment_body})
+    r = requests.post("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id),
+                      headers=githubHeader, data=comment_payload)
+    print(comment_body)
 
 
 # main server class
