@@ -45,11 +45,20 @@ def handle_fixed(post_body):
 def handle_added(post_body):
     data = json.loads(post_body)
     added_title = data['msg']['issue']['title']
+    added_id = data['msg']['issue']['id']
     print("Added: ", added_title)
+    PR_id = int(added_title[1:added_title.find(' ')])
     # TODO: handle added issue (sync to GitHub issue?)
-
+    if added_title.startswith("#"):
+        # post a comment containing pagure issue link on github
+        PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
+        PR_Comment_Body = "[Issue #{}](https://pagure.io/docs-test/issue/{}) created on Pagure.".format(added_id, added_id)
+        github_payload = {"body": PR_Comment_Body}
+        r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
+        print(r.text)
 
 def handle_comment(post_body):
+    # TODO: need handle comment deletion
     data = json.loads(post_body)
     info = {'comment': data['msg']['issue']['comments'][-1]['comment'],
             'issue_title': data['msg']['issue']['title'],
@@ -80,7 +89,7 @@ class MyServer(BaseHTTPRequestHandler):
             print("Invalid signature, ignoring this call")
             return
         """
-        
+
         post_body = urllib.parse.parse_qs(post_body)
         post_body = post_body['payload'][0]
 
