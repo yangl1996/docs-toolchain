@@ -29,24 +29,26 @@ githubRepo = config.githubRepo
 
 # handle new pull request on github
 def handle_pull_request(post_body):
-    data = json.loads(post_body)
+    data = json.loads(post_body)  # parse web hook payload
 
     # new PR opened
     if data['action'] == 'opened':
         print("New Pull Request opened")
         info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
                 'id': data['pull_request']['number'], 'link': data['pull_request']['html_url'],
-                'content': data['pull_request']['body']}
-        pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])
-        if not info['content']:
+                'content': data['pull_request']['body']}  # get github PR info
+        pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])  # generate pagure issue title
+        if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
-        PR_id = str(info['id'])
+        PR_id = str(info['id'])  # get github PR id
+        # call github api to get modified file list of the PR
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
-        data = json.loads(r.text)
+        data = json.loads(r.text)  # parse api return value
+        # generate a list of modified files
         filelist = ''
         for changed_file in data:
             filelist += "###{}\n\n".format(changed_file['filename'])
-
+        # call pagure API to post the corresponding issue
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
         pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist, PR_HTML_Link, info['creator'], info['content'])
         pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
@@ -66,6 +68,7 @@ def handle_pull_request(post_body):
         else:
             # TODO: is there a more elegant way to do this?
             print("Changes merged")
+            # let Python use shell commands to pull the changes from github, then push changes to pagure
             command = "cd " + localRepoPath + """
             git pull origin master
             git push pagure master
@@ -75,19 +78,19 @@ def handle_pull_request(post_body):
 
 def handle_pull_request_comment(post_body):
 
-    data = json.loads(post_body)
+    data = json.loads(post_body)  # parse web hook payload
 
-    # currently github are not providing comment deletion webhook
+    # currently github are not providing comment deletion web hook, so only handle creation
     if data['action'] == 'created':
         print("New comment created")
         info = {'issue_name': data['issue']['title'],
                 'issue_id': data['issue']['number'],
                 'comment': data['comment']['body'],
-                'username': data['comment']['user']['login']}
+                'username': data['comment']['user']['login']}  # get comment info
         # we auto create an comment pointing to pagure when new PR is opened, should ignore this one
         if info['comment'].startswith("[Issue #"):
             return
-        # no infinity loop
+        # avoid infinity loop
         if info['comment'].startswith("*Commented by"):
             return
 
@@ -95,13 +98,13 @@ def handle_pull_request_comment(post_body):
         comment_body = """*Commented by {}*
         
         {}""".format(info['username'], info['comment'])
-
-        # get pagure issue id
+        # call github issue comment list API to get pagure issue id
         r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, info['issue_id']),
                          headers=githubHeader)
-        data = json.loads(r.text)
+        data = json.loads(r.text)  # parse API return value
         info_body = data[0]['body']
-        pagure_id = int(info_body[8:info_body.find(']')])
+        pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
+        # call pagure API to sync the comment
         pagure_URL = "https://pagure.io/api/0/{}/issue/{}/comment".format(pagureRepo, pagure_id)
         pagure_head = {"Authorization": "token " + pagureToken}
         pagure_payload = {"comment": comment_body}
@@ -137,7 +140,6 @@ class MyServer(BaseHTTPRequestHandler):
         elif self.headers['X-Github-Event'] == 'issue_comment':
             th = threading.Thread(target=handle_pull_request_comment, args=(post_body,))
             th.start()
-
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
