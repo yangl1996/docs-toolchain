@@ -72,7 +72,7 @@ def handle_pull_request(post_body):
             pagure_URL = "https://pagure.io/api/0/{}/issue/{}/status".format(pagureRepo, pagure_id)
             pagure_head = {"Authorization": "token " + pagureToken}
             r = requests.post(pagure_URL, data={"status": "Invalid"}, headers=pagure_head)
-            
+
         # merged
         else:
             # TODO: is there a more elegant way to do this?
