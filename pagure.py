@@ -29,24 +29,25 @@ githubRepo = config.githubRepo
 # TODO: how to handle merge conflict
 
 
-def handle_fixed(post_body):
+def handle_edition(post_body):
     """
-    Function to handle fixed issue.
+    Function to handle edited issue.
     """
     data = json.loads(post_body)  # parse web hook payload
     deleted_title = data['msg']['issue']['title']  # get fixed issue's title
-    print("Fixed: ", deleted_title)
-    PR_id = int(deleted_title[1:deleted_title.find(' ')])  # get github PR id from the issue title
-    r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
+    if data['msg']['issue']['status'] == 'Fixed':
+        print("Fixed: ", deleted_title)
+        PR_id = int(deleted_title[1:deleted_title.find(' ')])  # get github PR id from the issue title
+        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader)  # get PR info from github
-    return_data = json.loads(r.text)  # parse PR info
-    PR_sha = return_data['head']['sha']  # get PR sha from PR info
-    # call github API to merge the PR
-    merge_payload = json.dumps({"commit_message": "Merge pull request" + str(PR_id), "sha": PR_sha})
-    r = requests.put('https://api.github.com/repos/{}/{}/pulls/{}/merge'.format(githubUsername, githubRepo, PR_id),
+        return_data = json.loads(r.text)  # parse PR info
+        PR_sha = return_data['head']['sha']  # get PR sha from PR info
+        # call github API to merge the PR
+        merge_payload = json.dumps({"commit_message": "Merge pull request" + str(PR_id), "sha": PR_sha})
+        r = requests.put('https://api.github.com/repos/{}/{}/pulls/{}/merge'.format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader, data=merge_payload)
-    print(r.text)
-    # TODO: add a commment on github to remind to delete the branch
+        print(r.text)
+        # TODO: add a commment on github to remind to delete the branch
 
 
 def handle_added(post_body):
@@ -109,7 +110,7 @@ class MyServer(BaseHTTPRequestHandler):
         post_body = post_body['payload'][0]
 
         if self.headers['X-Pagure-Topic'] == "issue.edit":  # issue edit
-            th = threading.Thread(target=handle_fixed, args=(post_body,))
+            th = threading.Thread(target=handle_edition, args=(post_body,))
             th.start()
         if self.headers['X-Pagure-Topic'] == "issue.new":  # issue added
             th = threading.Thread(target=handle_added, args=(post_body,))
