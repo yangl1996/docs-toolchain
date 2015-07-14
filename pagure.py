@@ -35,7 +35,7 @@ def handle_edition(post_body):
     """
     data = json.loads(post_body)  # parse web hook payload
     deleted_title = data['msg']['issue']['title']  # get fixed issue's title
-    if data['msg']['issue']['title'] == 'Fixed':
+    if data['msg']['issue']['status'] == 'Fixed':
         print("Fixed: ", deleted_title)
         PR_id = int(deleted_title[1:deleted_title.find(' ')])  # get github PR id from the issue title
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
