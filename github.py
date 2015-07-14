@@ -63,7 +63,16 @@ def handle_pull_request(post_body):
         if not data['pull_request']['merged']:
             # TODO: insufficient pagure API, we can directly modify the ticket repo
             print("Pull request deleted without being merged")
-
+            # call github issue comment list API to get pagure issue id
+            r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, data['pull_request']['number']),
+                             headers=githubHeader)
+            data = json.loads(r.text)  # parse API return value
+            info_body = data[0]['body']
+            pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
+            pagure_URL = "https://pagure.io/api/0/{}/issue/{}/status".format(pagureRepo, pagure_id)
+            pagure_head = {"Authorization": "token " + pagureToken}
+            r = requests.post(pagure_URL, data={"status": "Invalid"}, headers=pagure_head)
+            
         # merged
         else:
             # TODO: is there a more elegant way to do this?

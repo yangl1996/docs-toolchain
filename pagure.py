@@ -111,6 +111,7 @@ class MyServer(BaseHTTPRequestHandler):
         if self.headers['X-Pagure-Topic'] == "issue.edit":  # issue edit
             th = threading.Thread(target=handle_fixed, args=(post_body,))
             th.start()
+            # TODO: may not be fixing, may be closing or marking as invalid
         if self.headers['X-Pagure-Topic'] == "issue.new":  # issue added
             th = threading.Thread(target=handle_added, args=(post_body,))
             th.start()
