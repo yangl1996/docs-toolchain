@@ -71,3 +71,6 @@ target/
 .idea/vcs.xml
 
 .idea/workspace.xml
+
+# config file
+config.py
