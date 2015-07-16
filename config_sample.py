@@ -21,5 +21,5 @@ pagureToken = ""  # Pagure access token
 pagureRepo = ""  # Paugre repository name
 
 # CI Part
-PID = ""
-PSK = ""
+CIserver = ""
+CIrepopath = ""

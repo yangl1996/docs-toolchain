@@ -29,8 +29,8 @@ githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
 githubRepo = config.githubRepo
 
-CIserver = "http://f225301a.ngrok.io/"
-CIrepopath = "CI"
+CIserver = config.CIserver
+CIrepopath = config.CIrepopath
 pagure = libpagure.Pagure(pagureToken, pagureRepo)
 
 
