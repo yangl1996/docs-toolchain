@@ -68,7 +68,7 @@ def handle_pull_request(post_body):
         print(filelist)
         filelistname = "filelist-pr-{}.json".format(PR_id)
         filelistdata = []
-        payfileadd = ''
+        payfileadd = ' '
         if not os.path.exists(os.path.dirname(CIrepopath + '/' + PR_id + '/')):
             os.makedirs(os.path.dirname(CIrepopath + '/' + PR_id + '/'))
         for changed_file in data:
@@ -78,10 +78,10 @@ def handle_pull_request(post_body):
             filelistdata.append({'filename' : filename, 'built' : built, 'builtfile' : PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0]})
             payfileadd += '###{} : {}.html\n'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0])
 
-        print(payfileadd)
-        print(json.dumps(filelistdata))
+        # print(payfileadd)
+        # print(json.dumps(filelistdata))
         
-        print(filelistname)
+        # print(filelistname)
         with open(filelistname, 'w') as f:
             json.dump(filelistdata, f)
 
