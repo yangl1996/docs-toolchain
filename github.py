@@ -6,6 +6,9 @@ import os
 import hmac
 import hashlib
 import threading
+import markdown
+from urllib.request import urlopen
+
 try:
     import config
 except "No such file or directory":
@@ -26,6 +29,9 @@ githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
 githubRepo = config.githubRepo
 
+CIserver = "http://f225301a.ngrok.io/"
+CIrepopath = "CI"
+
 
 # handle new pull request on github
 def handle_pull_request(post_body):
@@ -36,7 +42,7 @@ def handle_pull_request(post_body):
         print("New Pull Request opened")
         info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
                 'id': data['pull_request']['number'], 'link': data['pull_request']['html_url'],
-                'content': data['pull_request']['body']}  # get github PR info
+                'content': data['pull_request']['body'], 'patch_url' : data['pull_request']['patch_url']}  # get github PR info
         pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])  # generate pagure issue title
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
@@ -45,12 +51,44 @@ def handle_pull_request(post_body):
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
         # generate a list of modified files
+        data1 = urlopen(info['patch_url'])
+        patch_file = '{}.patch'.format(info['id'])
+        f = open(localRepoPath + '/' + patch_file,'w')
+        f.write(data1.read().decode('utf-8'))
+        f.close()
+
+        command = "cd " + localRepoPath + '\n' + "git apply {}".format(patch_file)
+        os.system(command)
+
         filelist = ''
         for changed_file in data:
             filelist += "###{}\n\n".format(changed_file['filename'])
+
+        print(filelist)
+        filelistname = "filelist-pr-{}.json".format(PR_id)
+        filelistdata = []
+        payfileadd = ''
+        if not os.path.exists(os.path.dirname(CIrepopath + '/' + PR_id + '/')):
+            os.makedirs(os.path.dirname(CIrepopath + '/' + PR_id + '/'))
+        for changed_file in data:
+            html = markdown.markdownFromFile(input = localRepoPath + '/' + changed_file['filename'], output = CIrepopath + '/' + PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0]+'.html', output_format="html5")
+            built = True
+            filename = changed_file['filename']
+            filelistdata.append({'filename' : filename, 'built' : built, 'builtfile' : PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0]})
+            payfileadd += '###{} : {}.html\n'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0])
+
+        print(payfileadd)
+        print(json.dumps(filelistdata))
+        
+        print(filelistname)
+        with open(filelistname, 'w') as f:
+            json.dump(filelistdata, f)
+
+        command = "cd " + localRepoPath + '\n' + "git apply -R {}".format(patch_file)
+        os.system(command)
         # call pagure API to post the corresponding issue
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
-        pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist, PR_HTML_Link, info['creator'], info['content'])
+        pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n {}".format(filelist, PR_HTML_Link, info['creator'], info['content'],payfileadd)
         pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
         pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
         pagure_head = {"Authorization": "token " + pagureToken}
@@ -130,6 +168,8 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
+        print(self.headers)
+        print(post_body)
 
         # Validate signature
         sha_name, signature = self.headers['X-Hub-Signature'].split('=')
