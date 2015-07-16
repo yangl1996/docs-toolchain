@@ -61,7 +61,7 @@ def handle_added(post_body):
         PR_id = int(added_title[1:added_title.find(' ')])  # get github PR id from the issue title
         # call github API to post a comment containing pagure issue link to github PR
         PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
-        PR_Comment_Body = "[Issue #{}](https://pagure.io/docs-test/issue/{}) created on Pagure.".format(added_id, added_id)
+        PR_Comment_Body = "[Issue #{}](https://pagure.io/{}/issue/{}) created on Pagure.".format(added_id, pagureRepo,added_id)
         github_payload = {"body": PR_Comment_Body}
         r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
         print(r.text)
