@@ -19,3 +19,7 @@ githubRepo = ""  # GitHub repository name
 pagureSecretKey = ""  # Secret key used to sign the Pagure webhook data
 pagureToken = ""  # Pagure access token
 pagureRepo = ""  # Paugre repository name
+
+# CI Part
+PID = ""
+PSK = ""

@@ -4,6 +4,7 @@ import json
 import requests
 import threading
 import urllib.parse
+import libpagure
 # the following two imports are currently not used
 import hmac
 import hashlib

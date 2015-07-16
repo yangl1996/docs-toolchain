@@ -8,7 +8,7 @@ import hashlib
 import threading
 import markdown
 from urllib.request import urlopen
-
+import libpagure
 try:
     import config
 except "No such file or directory":
@@ -31,6 +31,7 @@ githubRepo = config.githubRepo
 
 CIserver = "http://f225301a.ngrok.io/"
 CIrepopath = "CI"
+pagure = libpagure.Pagure(pagureToken, pagureRepo)
 
 
 # handle new pull request on github
@@ -89,11 +90,7 @@ def handle_pull_request(post_body):
         # call pagure API to post the corresponding issue
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
         pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n {}".format(filelist, PR_HTML_Link, info['creator'], info['content'],payfileadd)
-        pagure_payload = {'title': pagure_title, 'issue_content': pagure_content}
-        pagure_URL = "https://pagure.io/api/0/" + pagureRepo + "/new_issue"
-        pagure_head = {"Authorization": "token " + pagureToken}
-        r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
-        print(r.text)
+        pagure.create_issue(pagure_title, pagure_content)
 
     # PR closed
     elif data['action'] == 'closed':
@@ -107,9 +104,7 @@ def handle_pull_request(post_body):
             data = json.loads(r.text)  # parse API return value
             info_body = data[0]['body']
             pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
-            pagure_URL = "https://pagure.io/api/0/{}/issue/{}/status".format(pagureRepo, pagure_id)
-            pagure_head = {"Authorization": "token " + pagureToken}
-            r = requests.post(pagure_URL, data={"status": "Invalid"}, headers=pagure_head)
+            pagure.change_issue_status(pagure_id, "Invalid")
 
         # merged
         else:
@@ -152,13 +147,7 @@ def handle_pull_request_comment(post_body):
         info_body = data[0]['body']
         pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
         # call pagure API to sync the comment
-        pagure_URL = "https://pagure.io/api/0/{}/issue/{}/comment".format(pagureRepo, pagure_id)
-        pagure_head = {"Authorization": "token " + pagureToken}
-        pagure_payload = {"comment": comment_body}
-        r = requests.post(pagure_URL, data=pagure_payload, headers=pagure_head)
-        print(r.text)
-
-
+        pagure.comment_issue(pagure_id, comment_body)
 
 
 # main server class
