@@ -4,6 +4,7 @@ import json
 
 class Pagure:
     # TODO: add error handling
+    # TODO: write some unit tests
     def __init__(self, pagure_token, pagure_repository, fork_username=None, instance_url="https://pagure.io"):
         """
         Create an instance.
@@ -95,7 +96,8 @@ class Pagure:
         if self.ForkUsername is None:
             request_url = "{}/api/0/{}/pull-requests".format(self.InstanceURL, self.Repository)
         else:
-            request_url = "{}/api/0/fork/{}/{}/pull-requests".format(self.InstanceURL, self.ForkUsername, self.Repository)
+            request_url = "{}/api/0/fork/{}/{}/pull-requests".format(self.InstanceURL, self.ForkUsername,
+                                                                     self.Repository)
         payload = {}
         if status is not None:
             payload['status'] = status
@@ -116,7 +118,8 @@ class Pagure:
         if self.ForkUsername is None:
             request_url = "{}/api/0/{}/pull-request/{}".format(self.InstanceURL, self.Repository, request_id)
         else:
-            request_url = "{}/api/0/fork/{}/{}/pull-request/{}".format(self.InstanceURL, self.ForkUsername, self.Repository, request_id)
+            request_url = "{}/api/0/fork/{}/{}/pull-request/{}".format(self.InstanceURL, self.ForkUsername,
+                                                                       self.Repository, request_id)
         r = requests.get(request_url, headers=self.Header)
         return_value = json.loads(r.text)
         return return_value
@@ -130,7 +133,8 @@ class Pagure:
         if self.ForkUsername is None:
             request_url = "{}/api/0/{}/pull-request/{}/merge".format(self.InstanceURL, self.Repository, request_id)
         else:
-            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/merge".format(self.InstanceURL, self.ForkUsername, self.Repository, request_id)
+            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/merge".format(self.InstanceURL, self.ForkUsername,
+                                                                             self.Repository, request_id)
         r = requests.post(request_url, headers=self.Header)
         return_value = json.loads(r.text)
         if return_value['message'] == "Changes merged!":
@@ -148,7 +152,8 @@ class Pagure:
         if self.ForkUsername is None:
             request_url = "{}/api/0/{}/pull-request/{}/close".format(self.InstanceURL, self.Repository, request_id)
         else:
-            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/close".format(self.InstanceURL, self.ForkUsername, self.Repository, request_id)
+            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/close".format(self.InstanceURL, self.ForkUsername,
+                                                                             self.Repository, request_id)
         r = requests.post(request_url, headers=self.Header)
         return_value = json.loads(r.text)
         if return_value['message'] == "Pull-request closed!":
@@ -170,7 +175,8 @@ class Pagure:
         if self.ForkUsername is None:
             request_url = "{}/api/0/{}/pull-request/{}/comment".format(self.InstanceURL, self.Repository, request_id)
         else:
-            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/comment".format(self.InstanceURL, self.ForkUsername, self.Repository, request_id)
+            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/comment".format(self.InstanceURL, self.ForkUsername,
+                                                                               self.Repository, request_id)
         payload = {'comment': body}
         if commit is not None:
             payload['commit'] = commit
@@ -201,7 +207,8 @@ class Pagure:
         if self.ForkUsername is None:
             request_url = "{}/api/0/{}/pull-request/{}/flag".format(self.InstanceURL, self.Repository, request_id)
         else:
-            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/flag".format(self.InstanceURL, self.ForkUsername, self.Repository, request_id)
+            request_url = "{}/api/0/fork/{}/{}/pull-request/{}/flag".format(self.InstanceURL, self.ForkUsername,
+                                                                            self.Repository, request_id)
         payload = {'username': username, 'percent': percent, 'comment': comment, 'url': url}
         if commit is not None:
             payload['commit'] = commit
@@ -214,3 +221,169 @@ class Pagure:
         else:
             result = (False, return_value['message'])
         return result
+
+    def create_issue(self, title, content, private=None):
+        """
+        Create a new issue.
+        :param title: the title of the issue
+        :param content: the description of the issue
+        :param private: whether create this issue as private
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/new_issue".format(self.InstanceURL, self.Repository)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/new_issue".format(self.InstanceURL, self.ForkUsername, self.Repository)
+        payload = {'title': title, 'content': content}
+        if private is not None:
+            payload['private'] = private
+        r = requests.post(request_url, data=payload, headers=self.Header)
+        return_value = json.loads(r.text)
+        if return_value['message'] == "Issue created":
+            result = (True, return_value['message'])
+        else:
+            result = (False, return_value['message'])
+        return result
+
+    def list_issues(self, status=None, tags=None, assignee=None, author=None):
+        """
+        List all issues of a project.
+        :param status: filters the status of the issues
+        :param tags: filers the tags of the issues
+        :param assignee: filters the assignee of the issues
+        :param author: filters the author of the issues
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/issues".format(self.InstanceURL, self.Repository)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/issues".format(self.InstanceURL, self.ForkUsername, self.Repository)
+        payload = {}
+        if status is not None:
+            payload['status'] = status
+        if tags is not None:
+            payload['tags'] = tags
+        if assignee is not None:
+            payload['assignee'] = assignee
+        if author is not None:
+            payload['author'] = author
+        r = requests.get(request_url, params=payload, headers=self.Header)
+        return_value = json.loads(r.text)
+        return return_value['issues']
+
+    def issue_info(self, issue_id):
+        """
+        Get info about a single issue.
+        :param issue_id: the id of the issue
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/issue/{}".format(self.InstanceURL, self.Repository, issue_id)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/issue/{}".format(self.InstanceURL, self.ForkUsername, self.Repository, issue_id)
+        r = requests.get(request_url, headers=self.Header)
+        return_value = json.loads(r.text)
+        return return_value
+
+    def get_list_comment(self, issue_id, comment_id):
+        """
+        Get a specific comment of an issue.
+        :param issue_id: the id of the issue
+        :param comment_id: the id of the comment
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/issue/{}/comment/{}".format(self.InstanceURL, self.Repository, issue_id,
+                                                                   comment_id)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/issue/{}/comment/{}".format(self.InstanceURL, self.ForkUsername,
+                                                                           self.Repository, issue_id, comment_id)
+        r = requests.get(request_url, headers=self.Header)
+        return_value = json.loads(r.text)
+        return return_value
+
+    def change_issue_status(self, issue_id, new_status):
+        """
+        Change the status of an issue.
+        :param issue_id: the id of the issue
+        :param new_status: the new status fo the issue
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/issue/{}/status".format(self.InstanceURL, self.Repository, issue_id)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/issue/{}/status".format(self.InstanceURL, self.ForkUsername,
+                                                                       self.Repository, issue_id)
+        payload = {'status': new_status}
+        r = requests.post(request_url, data=payload, headers=self.Header)
+        return_value = json.loads(r.text)
+        if return_value['message'].startswith("Successfully"):
+            result = (True, return_value['message'])
+        else:
+            result = (False, return_value['message'])
+        return result
+
+    def comment_issue(self, issue_id, body):
+        """
+        Comment to an issue.
+        :param issue_id: the id of the comment
+        :param body: the comment body
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/issue/{}/comment".format(self.InstanceURL, self.Repository, issue_id)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/issue/{}/comment".format(self.InstanceURL, self.ForkUsername,
+                                                                        self.Repository, issue_id)
+        payload = {'comment': body}
+        r = requests.post(request_url, data=payload, headers=self.Header)
+        return_value = json.loads(r.text)
+        if return_value['message'] == 'Comment added':
+            result = (True, return_value['message'])
+        else:
+            result = (False, return_value['message'])
+        return result
+
+    def project_tags(self):
+        """
+        List all git tags made to the project.
+        :return:
+        """
+        if self.ForkUsername is None:
+            request_url = "{}/api/0/{}/git/tags".format(self.InstanceURL, self.Repository)
+        else:
+            request_url = "{}/api/0/fork/{}/{}/git/tags".format(self.InstanceURL, self.ForkUsername, self.Repository)
+        r = requests.get(request_url, headers=self.Header)
+        return_value = json.loads(r.text)
+        return return_value['tags']
+
+    def list_projects(self, tags=None, username=None, fork=None):
+        """
+        Lisk all projects on this Pagure instance.
+        :param tags: filters the tags of the project
+        :param username: filters the username of the project administrators
+        :param fork: filters whether it is a fork (True) or not (False)
+        :return:
+        """
+        request_url = "{}/api/0/projects".format(self.InstanceURL)
+        payload = {}
+        if tags is not None:
+            payload['tags'] = tags
+        if username is not None:
+            payload['username'] = username
+        if fork is not None:
+            payload['fork'] = fork
+        r = requests.get(request_url, params=payload, headers=self.Header)
+        return_value = json.loads(r.text)
+        return return_value['projects']
+
+    def user_info(self, username):
+        """
+        Get info of a specific user.
+        :param username: the username of the user to get info about
+        :return:
+        """
+        request_url = "{}/api/0/user/{}".format(self.InstanceURL, username)
+        r = requests.get(request_url, headers=self.Header)
+        return_value = json.loads(r.text)
+        return return_value
