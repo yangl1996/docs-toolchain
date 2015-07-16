@@ -238,6 +238,7 @@ class Pagure:
         if private is not None:
             payload['private'] = private
         r = requests.post(request_url, data=payload, headers=self.Header)
+        print(r.text)
         return_value = json.loads(r.text)
         if return_value['message'] == "Issue created":
             result = (True, return_value['message'])
