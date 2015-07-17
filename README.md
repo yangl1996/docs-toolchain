@@ -1,5 +1,12 @@
 # Deploying
 
+### Get the requirements
+
+- requests
+- libpagure
+
+You may use pip to install modules above.
+
 ### Get the source code
 
 ```
