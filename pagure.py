@@ -122,6 +122,7 @@ class MyServer(BaseHTTPRequestHandler):
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
 print("Test Server")
+logging.basicConfig(filename='pagure.log', level=logging.INFO)
 logging.info('Server starts ay %s:%s.', listenAddr, listenPort)
 
 try:

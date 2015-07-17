@@ -157,6 +157,7 @@ class MyServer(BaseHTTPRequestHandler):
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
 print("Syncing tool")
+logging.basicConfig(filename='github.log', level=logging.INFO)
 logging.info('Server starts ay %s:%s.', listenAddr, listenPort)
 
 try:
