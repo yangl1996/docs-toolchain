@@ -32,8 +32,8 @@ githubRepo = config.githubRepo
 
 CIserver = config.CIserver
 CIrepopath = config.CIrepopath
-pagure = libpagure.Pagure(pagureToken, pagureRepo)
 
+pagure = libpagure.Pagure(pagureToken, pagureRepo)
 
 # handle new pull request on github
 def handle_pull_request(post_body):
@@ -53,13 +53,20 @@ def handle_pull_request(post_body):
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
         # generate a list of modified files
-        data1 = urlopen(info['patch_url'])
+
+        patch_data = urlopen(info['patch_url'])
         patch_file = '{}.patch'.format(info['id'])
-        f = open(localRepoPath + '/' + patch_file,'w')
-        f.write(data1.read().decode('utf-8'))
+        patch_path = localRepoPath + '/' + 'localdata' + '/' + PR_id + '/'
+        #create dir
+
+        if not os.path.exists(os.path.dirname(patch_path)):
+            os.makedirs(os.path.dirname(patch_path))
+        
+        f = open(patch_path + patch_file,'w')
+        f.write(patch_data.read().decode('utf-8'))
         f.close()
 
-        command = "cd " + localRepoPath + '\n' + "git apply {}".format(patch_file)
+        command = "cd " + localRepoPath + '\n' + "git apply {}".format('localdata' + '/' + PR_id + '/' + patch_file)
         os.system(command)
 
         filelist = '<code>'
@@ -70,23 +77,26 @@ def handle_pull_request(post_body):
         filelistname = "filelist-pr-{}.json".format(PR_id)
         filelistdata = []
         payfileadd = ' '
-        if not os.path.exists(os.path.dirname(CIrepopath + '/' + PR_id + '/')):
-            os.makedirs(os.path.dirname(CIrepopath + '/' + PR_id + '/'))
+        
         for changed_file in data:
-            html = markdown.markdownFromFile(input = localRepoPath + '/' + changed_file['filename'], output = CIrepopath + '/' + PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0]+'.html', output_format="html5")
+            #create path
+            if not os.path.exists(os.path.dirname(CIrepopath + '/' + PR_id + '/' + changed_file['filename'])):
+                os.makedirs(os.path.dirname(CIrepopath + '/' + PR_id + '/' + changed_file['filename']))
+            
+            html = markdown.markdownFromFile(input = localRepoPath + '/' + changed_file['filename'], output = CIrepopath + '/' + PR_id + '/' + changed_file['filename'].split('.')[0] +'.html', output_format="html5")
             built = True
             filename = changed_file['filename']
-            filelistdata.append({'filename' : filename, 'built' : built, 'builtfile' : PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0]})
-            payfileadd += '###{} : {}.html\n'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('/')[-1].split('.')[0])
+            filelistdata.append({'filename' : filename, 'built' : built, 'builtfile' : PR_id + '/' + changed_file['filename'].split('.')[0] + '.html'})
+            payfileadd += '<tr> <th> {} </th> <td> <a href="{}.html" target="_blank">{}</a></td> </tr>'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('.')[0],filename)
 
         # print(payfileadd)
         # print(json.dumps(filelistdata))
         
         # print(filelistname)
-        with open(filelistname, 'w') as f:
+        with open( patch_path + '/' + filelistname, 'w') as f:
             json.dump(filelistdata, f)
 
-        command = "cd " + localRepoPath + '\n' + "git apply -R {}".format(patch_file)
+        command = "cd " + localRepoPath + '\n' + "git apply -R {}".format('localdata' + '/' + PR_id + '/' + patch_file)
         os.system(command)
         # call pagure API to post the corresponding issue
         # call pagure API to post the corresponding issue
@@ -104,7 +114,10 @@ def handle_pull_request(post_body):
                                     <th>Modified File</th>
                                     <td>{}</td>
                                 </tr>
-                                </table><hr>\n\n{}\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, info['content'],payfileadd)
+                                <tr>
+                                    <th>Preview</th>
+                                    <td>{}</td>
+                                </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, payfileadd , info['content'])
 
         pagure.create_issue(pagure_title, pagure_content)
 
