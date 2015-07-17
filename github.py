@@ -66,8 +66,7 @@ def handle_pull_request(post_body):
                                 <tr>
                                     <th>Modified File</th>
                                     <td>{}</td>
-                                </table>
-                                <hr>\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, info['content'])
+                                </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, info['content'])
         pagure.create_issue(pagure_title, pagure_content)
 
     # PR closed
