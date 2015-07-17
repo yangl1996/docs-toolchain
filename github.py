@@ -6,6 +6,8 @@ import os
 import hmac
 import hashlib
 import threading
+import markdown
+from urllib.request import urlopen
 import libpagure
 import logging
 try:
@@ -28,8 +30,10 @@ githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
 githubRepo = config.githubRepo
 
-pagure = libpagure.Pagure(pagureToken, pagureRepo)
+CIserver = config.CIserver
+CIrepopath = config.CIrepopath
 
+pagure = libpagure.Pagure(pagureToken, pagureRepo)
 
 # handle new pull request on github
 def handle_pull_request(post_body):
@@ -40,20 +44,67 @@ def handle_pull_request(post_body):
         logging.info("New pull request opened on GitHub.")
         info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
                 'id': data['pull_request']['number'], 'link': data['pull_request']['html_url'],
-                'content': data['pull_request']['body']}  # get github PR info
+                'content': data['pull_request']['body'], 'patch_url' : data['pull_request']['patch_url']}  # get github PR info
         pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])  # generate pagure issue title
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
+
+        """CI Starts"""
+
         PR_id = str(info['id'])  # get github PR id
         # call github api to get modified file list of the PR
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
-        # generate a list of modified files
+
+        #Get Patch of PR
+        patch_data = urlopen(info['patch_url'])
+        patch_file = '{}.patch'.format(info['id'])
+        patch_path = localRepoPath + '/' + 'localdata' + '/' + PR_id + '/'
+        
+        #create dir
+        if not os.path.exists(os.path.dirname(patch_path)):
+            os.makedirs(os.path.dirname(patch_path))
+        
+        #save patch
+        f = open(patch_path + patch_file,'w')
+        f.write(patch_data.read().decode('utf-8'))
+        f.close()
+
+        #apply patch
+        command = "cd " + localRepoPath + '\n' + "git apply {}".format('localdata' + '/' + PR_id + '/' + patch_file)
+        os.system(command)
+
+        #generate modified file list
         filelist = '<code>'
         for changed_file in data:
             filelist += "{}\n".format(changed_file['filename'])
         filelist += "</code>"
-        # call pagure API to post the corresponding issue
+
+        #future : dump filelist and on update check
+        filelistname = "filelist-pr-{}.json".format(PR_id)
+        filelistdata = []
+        payfileadd = ' '
+        
+        for changed_file in data:
+            #create path
+            if not os.path.exists(os.path.dirname(CIrepopath + '/' + PR_id + '/' + changed_file['filename'])):
+                os.makedirs(os.path.dirname(CIrepopath + '/' + PR_id + '/' + changed_file['filename']))
+            
+            html = markdown.markdownFromFile(input = localRepoPath + '/' + changed_file['filename'], output = CIrepopath + '/' + PR_id + '/' + changed_file['filename'].split('.')[0] +'.html', output_format="html5")
+            built = True
+            filename = changed_file['filename']
+            filelistdata.append({'filename' : filename, 'built' : built, 'builtfile' : PR_id + '/' + changed_file['filename'].split('.')[0] + '.html'})
+            payfileadd += '<tr> <th> {} </th> <td> <a href="{}.html" target="_blank">{}</a></td> </tr>'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('.')[0],filename)
+
+        with open( patch_path + '/' + filelistname, 'w') as f:
+            json.dump(filelistdata, f)
+
+        #revert patch
+        command = "cd " + localRepoPath + '\n' + "git apply -R {}".format('localdata' + '/' + PR_id + '/' + patch_file)
+        os.system(command)
+
+        """CI ends"""
+
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
         pagure_content = """<table>
                                 <tr>
@@ -67,7 +118,13 @@ def handle_pull_request(post_body):
                                 <tr>
                                     <th>Modified File</th>
                                     <td>{}</td>
-                                </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, info['content'])
+                                </tr>
+                                <tr>
+                                    <th>Preview</th>
+                                    <td>{}</td>
+                                </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, payfileadd , info['content'])
+
+        # call pagure API to post the corresponding issue
         pagure.create_issue(pagure_title, pagure_content)
 
     # PR closed
@@ -134,6 +191,8 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
+        print(self.headers)
+        print(post_body)
 
         # Validate signature
         sha_name, signature = self.headers['X-Hub-Signature'].split('=')
