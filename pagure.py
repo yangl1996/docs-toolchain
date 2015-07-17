@@ -4,6 +4,7 @@ import json
 import requests
 import threading
 import urllib.parse
+import logging
 import libpagure
 # the following two imports are currently not used
 import hmac
@@ -12,7 +13,7 @@ try:
     import config
 except "No such file or directory":
     import config_sample as config
-    print("Please set up your config.py file. Exiting.")
+    logging.critical("Configuration file not found.")
     exit()
 
 # import configurations from config.py
@@ -37,7 +38,7 @@ def handle_edition(post_body):
     data = json.loads(post_body)  # parse web hook payload
     deleted_title = data['msg']['issue']['title']  # get fixed issue's title
     if data['msg']['issue']['status'] == 'Fixed':
-        print("Fixed: ", deleted_title)
+        logging.info("An issue is marked as fixed on Pagure.")
         PR_id = int(deleted_title[1:deleted_title.find(' ')])  # get github PR id from the issue title
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader)  # get PR info from github
@@ -47,7 +48,6 @@ def handle_edition(post_body):
         merge_payload = json.dumps({"commit_message": "Merge pull request" + str(PR_id), "sha": PR_sha})
         r = requests.put('https://api.github.com/repos/{}/{}/pulls/{}/merge'.format(githubUsername, githubRepo, PR_id),
                      headers=githubHeader, data=merge_payload)
-        print(r.text)
         # TODO: add a commment on github to remind to delete the branch
 
 
@@ -55,20 +55,20 @@ def handle_added(post_body):
     data = json.loads(post_body)  # parse web hook payload
     added_title = data['msg']['issue']['title']  # get added issue's title
     added_id = data['msg']['issue']['id']  # get added issue's id on pagure
-    print("Added: ", added_title)
     # TODO: handle issues added on pagure (sync to GitHub issue?)
     if added_title.startswith("#"):
+        logging.info("An mirror issue is added on GitHub.")
         PR_id = int(added_title[1:added_title.find(' ')])  # get github PR id from the issue title
         # call github API to post a comment containing pagure issue link to github PR
         PR_Comment_Link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id)
         PR_Comment_Body = "[Issue #{}](https://pagure.io/{}/issue/{}) created on Pagure.".format(added_id, pagureRepo,added_id)
         github_payload = {"body": PR_Comment_Body}
         r = requests.post(PR_Comment_Link, data=json.dumps(github_payload), headers=githubHeader)
-        print(r.text)
 
 
 def handle_comment(post_body):
     # TODO: need handle comment deletion
+    logging.info("A comment is created on Paugre.")
     data = json.loads(post_body)  # parse web hook payload
     info = {'comment': data['msg']['issue']['comments'][-1]['comment'],
             'issue_title': data['msg']['issue']['title'],
@@ -85,7 +85,6 @@ def handle_comment(post_body):
     comment_payload = json.dumps({"body": comment_body})
     r = requests.post("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, PR_id),
                       headers=githubHeader, data=comment_payload)
-    print(r.text)
 
 
 # main server class
@@ -123,7 +122,8 @@ class MyServer(BaseHTTPRequestHandler):
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
 print("Test Server")
-print(time.asctime(), "Server Starts - %s:%s" % (listenAddr, listenPort))
+logging.basicConfig(filename='pagure.log', level=logging.INFO)
+logging.info('Server starts ay %s:%s.', listenAddr, listenPort)
 
 try:
     myServer.serve_forever()
@@ -131,4 +131,4 @@ except KeyboardInterrupt:
     pass
 
 myServer.server_close()
-print(time.asctime(), "Server Stops - %s:%s" % (listenAddr, listenPort))
+logging.info('Server stops.')

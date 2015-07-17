@@ -7,11 +7,12 @@ import hmac
 import hashlib
 import threading
 import libpagure
+import logging
 try:
     import config
 except "No such file or directory":
     import config_sample as config
-    print("Please set up your config.py file. Exiting.")
+    logging.critical("Configuration file not found.")
     exit()
 
 # import configurations from config.py
@@ -36,7 +37,7 @@ def handle_pull_request(post_body):
 
     # new PR opened
     if data['action'] == 'opened':
-        print("New Pull Request opened")
+        logging.info("New pull request opened on GitHub.")
         info = {'title': data['pull_request']['title'], 'creator': data['pull_request']['user']['login'],
                 'id': data['pull_request']['number'], 'link': data['pull_request']['html_url'],
                 'content': data['pull_request']['body']}  # get github PR info
@@ -73,8 +74,7 @@ def handle_pull_request(post_body):
     elif data['action'] == 'closed':
         # not merged
         if not data['pull_request']['merged']:
-            # TODO: insufficient pagure API, we can directly modify the ticket repo
-            print("Pull request deleted without being merged")
+            logging.info("Pull request closed with out being merged on GitHub.")
             # call github issue comment list API to get pagure issue id
             r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, data['pull_request']['number']),
                              headers=githubHeader)
@@ -86,7 +86,7 @@ def handle_pull_request(post_body):
         # merged
         else:
             # TODO: is there a more elegant way to do this?
-            print("Changes merged")
+            logging.info("Pull request merged on GitHub.")
             # let Python use shell commands to pull the changes from github, then push changes to pagure
             command = "cd " + localRepoPath + """
             git pull origin master
@@ -101,7 +101,7 @@ def handle_pull_request_comment(post_body):
 
     # currently github are not providing comment deletion web hook, so only handle creation
     if data['action'] == 'created':
-        print("New comment created")
+        logging.info("New comment created on GitHub.")
         info = {'issue_name': data['issue']['title'],
                 'issue_id': data['issue']['number'],
                 'comment': data['comment']['body'],
@@ -142,7 +142,7 @@ class MyServer(BaseHTTPRequestHandler):
             return
         mac = hmac.new(secretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
         if not hmac.compare_digest(mac.hexdigest(), signature):
-            print("Invalid signature, ignoring this call")
+            logging.warning("Ignoring a web hook call due to incorrect signature.")
             return
 
         # Handle post body
@@ -156,8 +156,9 @@ class MyServer(BaseHTTPRequestHandler):
 
 
 myServer = HTTPServer((listenAddr, listenPort), MyServer)
-print("Syncing tool prototype")
-print(time.asctime(), "Server Starts - %s:%s" % (listenAddr, listenPort))
+print("Syncing tool")
+logging.basicConfig(filename='github.log', level=logging.INFO)
+logging.info('Server starts ay %s:%s.', listenAddr, listenPort)
 
 try:
     myServer.serve_forever()
@@ -165,4 +166,4 @@ except KeyboardInterrupt:
     pass
 
 myServer.server_close()
-print(time.asctime(), "Server Stops - %s:%s" % (listenAddr, listenPort))
+logging.info('Server stops.')
