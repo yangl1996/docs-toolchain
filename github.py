@@ -48,12 +48,25 @@ def handle_pull_request(post_body):
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
         # generate a list of modified files
-        filelist = ''
+        filelist = '<code>'
         for changed_file in data:
-            filelist += "###{}\n\n".format(changed_file['filename'])
+            filelist += "{}\n".format(changed_file['filename'])
+        filelist += "</code>"
         # call pagure API to post the corresponding issue
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
-        pagure_content = "##Files Modified\n\n{}\n\n##PR Github Link : {}\n\n##Creator : {}\n\n##Description\n\n{}\n\n".format(filelist, PR_HTML_Link, info['creator'], info['content'])
+        pagure_content = """<table>
+                                <tr>
+                                    <th>Creator</th>
+                                    <td>{}</td>
+                                </tr>
+                                <tr>
+                                    <th>PR Link</th>
+                                    <td><a href="{}" target="_blank">{}</a></td>
+                                </tr>
+                                <tr>
+                                    <th>Modified File</th>
+                                    <td>{}</td>
+                                </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, info['content'])
         pagure.create_issue(pagure_title, pagure_content)
 
     # PR closed
