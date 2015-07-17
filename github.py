@@ -48,32 +48,39 @@ def handle_pull_request(post_body):
         pagure_title = "#{} {} by {}".format(str(info['id']), info['title'], info['creator'])  # generate pagure issue title
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
+
+        """CI Starts"""
+
         PR_id = str(info['id'])  # get github PR id
         # call github api to get modified file list of the PR
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
-        # generate a list of modified files
 
+        #Get Patch of PR
         patch_data = urlopen(info['patch_url'])
         patch_file = '{}.patch'.format(info['id'])
         patch_path = localRepoPath + '/' + 'localdata' + '/' + PR_id + '/'
+        
         #create dir
-
         if not os.path.exists(os.path.dirname(patch_path)):
             os.makedirs(os.path.dirname(patch_path))
         
+        #save patch
         f = open(patch_path + patch_file,'w')
         f.write(patch_data.read().decode('utf-8'))
         f.close()
 
+        #apply patch
         command = "cd " + localRepoPath + '\n' + "git apply {}".format('localdata' + '/' + PR_id + '/' + patch_file)
         os.system(command)
 
+        #generate modified file list
         filelist = '<code>'
         for changed_file in data:
             filelist += "{}\n".format(changed_file['filename'])
         filelist += "</code>"
 
+        #future : dump filelist and on update check
         filelistname = "filelist-pr-{}.json".format(PR_id)
         filelistdata = []
         payfileadd = ' '
@@ -89,17 +96,15 @@ def handle_pull_request(post_body):
             filelistdata.append({'filename' : filename, 'built' : built, 'builtfile' : PR_id + '/' + changed_file['filename'].split('.')[0] + '.html'})
             payfileadd += '<tr> <th> {} </th> <td> <a href="{}.html" target="_blank">{}</a></td> </tr>'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('.')[0],filename)
 
-        # print(payfileadd)
-        # print(json.dumps(filelistdata))
-        
-        # print(filelistname)
         with open( patch_path + '/' + filelistname, 'w') as f:
             json.dump(filelistdata, f)
 
+        #revert patch
         command = "cd " + localRepoPath + '\n' + "git apply -R {}".format('localdata' + '/' + PR_id + '/' + patch_file)
         os.system(command)
-        # call pagure API to post the corresponding issue
-        # call pagure API to post the corresponding issue
+
+        """CI ends"""
+
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
         pagure_content = """<table>
                                 <tr>
@@ -119,6 +124,7 @@ def handle_pull_request(post_body):
                                     <td>{}</td>
                                 </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link, filelist, payfileadd , info['content'])
 
+        # call pagure API to post the corresponding issue
         pagure.create_issue(pagure_title, pagure_content)
 
     # PR closed
