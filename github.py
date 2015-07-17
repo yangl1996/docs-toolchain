@@ -48,10 +48,10 @@ def handle_pull_request(post_body):
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id), headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
         # generate a list of modified files
-        filelist = '<ul>\n'
+        filelist = '<code>'
         for changed_file in data:
-            filelist += "<li>{}</li>\n".format(changed_file['filename'])
-        filelist += "</ul>"
+            filelist += "{}\n".format(changed_file['filename'])
+        filelist += "</code>"
         # call pagure API to post the corresponding issue
         PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
         pagure_content = """<table>
