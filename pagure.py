@@ -52,7 +52,7 @@ def handle_added(post_body):
     added_id = data['msg']['issue']['id']  # get added issue's id on pagure
     # TODO: handle issues added on pagure (sync to GitHub issue?)
     if added_title.startswith("#"):
-        logging.info("An mirror issue is added on GitHub.")
+        logging.info("An mirror issue is added on Pagure.")
         pr_id = int(added_title[1:added_title.find(' ')])  # get github PR id from the issue title
         # call github API to post a comment containing pagure issue link to github PR
         pr_comment_link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,

@@ -30,6 +30,7 @@ vim config.py
 3. git push to ```pagure``` to ensure the three repos are identical
 
 ### CI Server
+
 1. Set up CI repo
 2. Start HTTP server on that repo
 
@@ -47,3 +48,10 @@ nohup python3 pagure.py &
 3. Continuously Integrates (CI) with ability to preview the changed documents
 4. Merges GitHub Pull Request when the relevant Pagure issue is marked as "Fixed"
 5. Keeps the GitHub repo and the Pagure repo synced
+
+# Implemented Syncs
+
+|Direction | Issues| Pull Requests|Comments | 
+| :------| :------ | :----- | :----- |
+| Pagure -> GitHub| No | No |Yes, only issues mirrored from GitHub Pull Requests|
+| GitHub -> Pagure| No | Mirrors to Pagure issue | Yes, only Pull Requests|

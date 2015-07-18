@@ -171,6 +171,8 @@ def handle_pull_request(post_body):
             """
             os.system(command)
 
+            # TODO: check whether the merge is successful
+
 
 def handle_pull_request_comment(post_body):
 
@@ -191,9 +193,7 @@ def handle_pull_request_comment(post_body):
             return
 
         # prepare pagure comment body
-        comment_body = """*Commented by {}*
-        
-        {}""".format(info['username'], info['comment'])
+        comment_body = """*Commented by {}*\n\n{}""".format(info['username'], info['comment'])
         # call github issue comment list API to get pagure issue id
         r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
                                                                                         githubRepo,
