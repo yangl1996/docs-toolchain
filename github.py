@@ -30,8 +30,8 @@ githubHeader = {"Authorization": "token " + githubToken}
 githubUsername = config.githubUsername
 githubRepo = config.githubRepo
 
-CIserver = config.CIserver
-CIrepopath = config.CIrepopath
+CIserver = config.ciServer
+CIrepopath = config.ciRepoPath
 
 pagure = libpagure.Pagure(pagureToken, pagureRepo)
 

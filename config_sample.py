@@ -21,5 +21,5 @@ pagureToken = ""  # Pagure access token
 pagureRepo = ""  # Paugre repository name
 
 # CI Part
-CIserver = ""
-CIrepopath = ""
+ciServer = ""  # Address of the CI server
+ciRepoPath = ""  # Path to CI repository
