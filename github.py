@@ -213,8 +213,6 @@ class MyServer(BaseHTTPRequestHandler):
         self.end_headers()
         content_len = int(self.headers['content-length'])
         post_body = self.rfile.read(content_len).decode()
-        print(self.headers)
-        print(post_body)
 
         # Validate signature
         sha_name, signature = self.headers['X-Hub-Signature'].split('=')
