@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
-import time
 import json
+import datetime
 import requests
 import os
 import hmac
@@ -55,30 +55,30 @@ def handle_pull_request(post_body):
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
 
-        """CI Starts"""
+        # CI Starts
 
-        PR_id = str(info['id'])  # get github PR id
+        pr_id = str(info['id'])  # get github PR id
         # call github api to get modified file list of the PR
-        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, PR_id),
+        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, pr_id),
                          headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
 
         # Get Patch of PR
         patch_data = urlopen(info['patch_url'])
         patch_file = '{}.patch'.format(info['id'])
-        patch_path = localRepoPath + '/' + 'localdata' + '/' + PR_id + '/'
+        patch_path = "{}/localdata/{}/".format(localRepoPath, pr_id)
         
         # create dir
         if not os.path.exists(os.path.dirname(patch_path)):
             os.makedirs(os.path.dirname(patch_path))
         
         # save patch
-        f = open(patch_path + patch_file,'w')
+        f = open(patch_path + patch_file, 'w')
         f.write(patch_data.read().decode('utf-8'))
         f.close()
 
         # apply patch
-        command = "cd " + localRepoPath + '\n' + "git apply {}".format('localdata' + '/' + PR_id + '/' + patch_file)
+        command = "cd {}\n".format(localRepoPath) + "git apply localdata/{}/{}\n".format(pr_id, patch_file)
         os.system(command)
 
         # generate modified file list
@@ -87,36 +87,40 @@ def handle_pull_request(post_body):
             filelist += "{}\n".format(changed_file['filename'])
         filelist += "</code>"
 
-        # future : dump filelist and on update check
-        filelistname = "filelist-pr-{}.json".format(PR_id)
+        # TODO: dump filelist and on update check
+        filelistname = "filelist-pr-{}.json".format(pr_id)
         filelistdata = []
         payfileadd = ' '
         
         for changed_file in data:
             # create path
-            if not os.path.exists(os.path.dirname(CIrepopath + '/' + PR_id + '/' + changed_file['filename'])):
-                os.makedirs(os.path.dirname(CIrepopath + '/' + PR_id + '/' + changed_file['filename']))
-            
-            html = markdown.markdownFromFile(input=localRepoPath + '/' + changed_file['filename'],
-                                             output=CIrepopath + '/' + PR_id + '/' + changed_file['filename'].split('.')[0] + '.html',
-                                             output_format="html5")
-            built = True
             filename = changed_file['filename']
+            filename_no_extension = filename[:filename.rfind('.')]
+            if not os.path.exists(os.path.dirname(CIrepopath + '/' + pr_id + '/' + filename)):
+                os.makedirs(os.path.dirname(CIrepopath + '/' + pr_id + '/' + filename))
+
+            markdown.markdownFromFile(input=localRepoPath + '/' + changed_file['filename'],
+                                      output="{}/{}/{}.html".format(CIrepopath, pr_id, filename_no_extension),
+                                      output_format="html5")
+            built = True
             filelistdata.append({'filename': filename,
                                  'built': built,
-                                 'builtfile': PR_id + '/' + changed_file['filename'].split('.')[0] + '.html'})
-            payfileadd += '<tr> <th> {} </th> <td> <a href="{}.html" target="_blank">{}</a></td> </tr>'.format(filename, CIserver + PR_id + '/' + changed_file['filename'].split('.')[0], filename)
+                                 'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
+            html_path = "{}/{}/{}.html".format(CIserver, pr_id, filename_no_extension)
+            payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
 
-        with open( patch_path + '/' + filelistname, 'w') as f:
+        with open(patch_path + '/' + filelistname, 'w') as f:
             json.dump(filelistdata, f)
 
+        built_time_tag = "Last built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
+
         # revert patch
-        command = "cd " + localRepoPath + '\n' + "git apply -R {}".format('localdata' + '/' + PR_id + '/' + patch_file)
+        command = "cd {}\n".format(localRepoPath) + "git apply -R localdata/{}/{}\n".format(pr_id, patch_file)
         os.system(command)
 
-        """CI ends"""
+        # CI ends
 
-        PR_HTML_Link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, PR_id)
+        pr_html_link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, pr_id)
         pagure_content = """<table>
                                 <tr>
                                     <th>Creator</th>
@@ -133,8 +137,10 @@ def handle_pull_request(post_body):
                                 <tr>
                                     <th>Preview</th>
                                     <td>{}</td>
-                                </table><hr>\n\n{}""".format(info['creator'], PR_HTML_Link, PR_HTML_Link,
-                                                             filelist, payfileadd , info['content'])
+                                </tr>
+                                {}
+                                </table><hr>\n\n{}""".format(info['creator'], pr_html_link, pr_html_link,
+                                                             filelist, built_time_tag, payfileadd, info['content'])
 
         # call pagure API to post the corresponding issue
         pagure.create_issue(pagure_title, pagure_content)
@@ -145,10 +151,10 @@ def handle_pull_request(post_body):
         if not data['pull_request']['merged']:
             logging.info("Pull request closed with out being merged on GitHub.")
             # call github issue comment list API to get pagure issue id
-            r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
-                                                                                            githubRepo,
-                                                                                            data['pull_request']['number']),
-                             headers=githubHeader)
+            get_url = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
+                                                                                     githubRepo,
+                                                                                     data['pull_request']['number'])
+            r = requests.get(get_url, headers=githubHeader)
             data = json.loads(r.text)  # parse API return value
             info_body = data[0]['body']
             pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
