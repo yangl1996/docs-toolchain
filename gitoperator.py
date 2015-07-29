@@ -1,5 +1,6 @@
 import os
 
+
 class Repository:
     def __init__(self, path, remote_1, remote_2):
         self.__path = path
