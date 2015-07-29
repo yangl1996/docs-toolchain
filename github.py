@@ -10,6 +10,7 @@ import markdown
 from urllib.request import urlopen
 import libpagure
 import logging
+import gitoperator as git
 try:
     import config
 except "No such file or directory":
@@ -34,6 +35,8 @@ CIserver = config.ciServer
 CIrepopath = config.ciRepoPath
 
 pagure = libpagure.Pagure(pagureToken, pagureRepo)
+
+gitRepository = git.Repository(localRepoPath, "origin", "pagure")  # remote 1 is github ('origin'), remote 2 is pagure
 
 
 # handle new pull request on github
@@ -78,8 +81,8 @@ def handle_pull_request(post_body):
         f.close()
 
         # apply patch
-        command = "cd {}\n".format(localRepoPath) + "git apply localdata/{}/{}\n".format(pr_id, patch_file)
-        os.system(command)
+
+        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file))
 
         # generate modified file list
         filelist = '<code>'
@@ -115,8 +118,7 @@ def handle_pull_request(post_body):
         built_time_tag = "Last built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
 
         # revert patch
-        command = "cd {}\n".format(localRepoPath) + "git apply -R localdata/{}/{}\n".format(pr_id, patch_file)
-        os.system(command)
+        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file), True)
 
         # CI ends
 
@@ -162,17 +164,11 @@ def handle_pull_request(post_body):
 
         # merged
         else:
-            # TODO: is there a more elegant way to do this?
             logging.info("Pull request merged on GitHub.")
+
             # let Python use shell commands to pull the changes from github, then push changes to pagure
-            command = "cd " + localRepoPath + """
-            git pull origin master
-            git push pagure master
-            """
-            os.system(command)
-
-            # TODO: check whether the merge is successful
-
+            gitRepository.pull(1)
+            gitRepository.push(2)
 
 def handle_pull_request_comment(post_body):
 
