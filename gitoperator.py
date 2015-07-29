@@ -29,3 +29,10 @@ class Repository:
     def commit(self, message):
         command = """cd {} \n git stage --all \n git commit -m "{}" \n""".format(self.__path, message)
         os.system(command)
+
+    def apply(self, patch_path, revert=False):
+        if not revert:
+            command = """cd {} \n git apply {} \n""".format(self.__path, patch_path)
+        else:
+            command = """cd {} \n git apply -R {} \n""".format(self.__path, patch_path)
+        os.system(command)
