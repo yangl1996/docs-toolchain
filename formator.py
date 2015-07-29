@@ -1,6 +1,5 @@
 from datetime import date
 from time import mktime
-from time import strftime
 import json
 
 
@@ -19,14 +18,18 @@ template_comment = """{
 
 
 class User:
-    def __init__(self, username, fullname, default_email, emails=None, avatar_url=None):
+    def __init__(self, username, fullname, default_email, emails=None):
         self.__username = username
         self.__fullname = fullname
-        self.__avatar_url = avatar_url
         self.__default_email = default_email
         if not emails:
             self.__emails = [default_email]
         self.__emails = emails
+
+    @classmethod
+    def load(cls, json_dict):
+        return cls(json_dict['name'], json_dict['fullname'], json_dict['default_email'],
+                   emails=json_dict['emails'])
 
     def default_email(self, new_email=None):
         if not new_email:
@@ -46,43 +49,30 @@ class User:
         else:
             self.__fullname = fullname
 
-    def avatar(self, new_avatar=None):
-        if not new_avatar:
-            return self.__avatar_url
-        else:
-            self.__avatar_url = new_avatar
-
-    def get_dict(self,
-                 fullname="fullname",
-                 username="name",
-                 default_email="default_email",
-                 emails="emails",
-                 avatar=None):
-        result = {}
-        if fullname:
-            result[fullname] = self.__fullname
-        if username:
-            result[username] = self.__username
-        if avatar:
-            result[avatar] = self.__avatar_url
-        if default_email:
-            result[default_email] = self.__default_email
-        if emails:
-            result[emails] = self.__emails
+    def get_dict(self):
+        result = {"fullname": self.__fullname, "username": self.__username, "default_email": self.__default_email,
+                  "emails": self.__emails}
         return result
 
 
 class Comment:
 
     def __init__(self, ui_id, creator, comment,
-                 create_time=strftime("%Y-%m-%d %H:%M"),
                  create_date=int(mktime(date.today().timetuple())), parent=None):
         self.__ui_id = ui_id
         self.__creator = creator
         self.__comment = comment
-        self.__create_time = create_time
         self.__create_date = create_date
         self.__parent = parent
+
+    @classmethod
+    def load(cls, json_dict):
+        ui_id = json_dict['id']
+        creator = User.load(json_dict['user'])
+        comment = json_dict['comment']
+        create_date = json_dict['date_created']
+        parent = cls.load(json_dict['parent'])
+        return cls(ui_id, creator, comment, create_date=create_date, parent=parent)
 
     def create_date(self, new_date=None):
         if not new_date:
@@ -98,15 +88,6 @@ class Comment:
             return self.__parent
         else:
             self.__parent = new_parent
-
-    def create_time(self, new_time=None):
-        if not new_time:
-            return self.__create_time
-        else:
-            if new_time is not str:
-                raise Exception("String expected here, format: %Y-%m-%d %H:%M")
-            else:
-                self.__create_time = new_time
 
     def comment(self, new_comment=None):
         if not new_comment:
@@ -140,18 +121,18 @@ class Issue:
     def __init__(self, ui_id, title, content, creator, tags=None, private=False, status="Open", depends=None,
                  create_date=int(mktime(date.today().timetuple())), comments=None, blocks=None, assignee=None):
         """
-        :param ui_id: [int] the id used in the UI
-        :param title: [str] the title of the issue
-        :param content: [str] the content fo the issue
-        :param creator: [class User] the creator of the issue
-        :param tags: [list of str] tags of the issue
-        :param private: [boolean] whether the issue is private
-        :param status: [str] the status of the issue
-        :param depends: UNKNOWN!
+        :param ui_id:       [int] the id used in the UI
+        :param title:       [str] the title of the issue
+        :param content:     [str] the content fo the issue
+        :param creator:     [class User] the creator of the issue
+        :param tags:        [list of str] tags of the issue
+        :param private:     [boolean] whether the issue is private
+        :param status:      [str] the status of the issue
+        :param depends:     UNKNOWN!
         :param create_date: [int] an UNIX style date
-        :param comments: [list of class Comment] comments of the issue
-        :param blocks: UNKNOWN!
-        :param assignee: [class User] the assignee of the issue
+        :param comments:    [list of class Comment] comments of the issue
+        :param blocks:      UNKNOWN!
+        :param assignee:    [class User] the assignee of the issue
         :return:
         """
 
@@ -167,6 +148,24 @@ class Issue:
         self.__blocks = blocks
         self.__assignee = assignee
         self.__content = content
+
+    @classmethod
+    def load(cls, input_dict):
+        assignee = User.load(input_dict['assignee'])
+        blocks = []  # TODO: handle this
+        comments = Comment.load(input_dict['comments'])
+        content = input_dict['content']
+        create_date = input_dict['date_created']
+        depends = []  # TODO: handle this
+        ui_id = input_dict['id']
+        private = input_dict['private']
+        status = input_dict['status']
+        tags = input_dict['tags']
+        title = input_dict['title']
+        creator = User.load(input_dict['user'])
+
+        return cls(ui_id, title, content, creator, tags=tags, private=private, status=status, depends=depends,
+                   create_date=create_date, comments=comments, blocks=blocks, assignee=assignee)
 
     def content(self, new_content=None):
         if not new_content:
