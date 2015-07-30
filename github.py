@@ -161,7 +161,8 @@ def handle_pull_request(post_body):
 
         # call pagure API to post the corresponding issue
         new_issue = formatter.Issue(0, pagure_title, pagure_content, creator)
-        new_json = open(str(uuid.uuid4().hex), 'w')
+        new_json_path = localTicketRepoPath + "/" + str(uuid.uuid4().hex)
+        new_json = open(new_json_path, 'w')
         new_json.write(new_issue.format_json())
         new_json.close()
         ticketRepository.pull(1)
