@@ -60,6 +60,7 @@ def handle_pull_request(post_body):
         if 'name' not in user_info:
             user_info['name'] = user_info['login']
         if 'email' not in user_info:
+            print("wow")
             user_info['name'] = "Lei Yang"  # if no user email, use a default account
             user_info['login'] = "yangl1996"
             user_info['email'] = "yltt1234512@gmail.com"
