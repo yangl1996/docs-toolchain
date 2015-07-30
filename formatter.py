@@ -3,20 +3,6 @@ from time import mktime
 import json
 
 
-template_comment = """{
-  "avatar_url": "https://seccdn.libravatar.org/avatar/...",
-  "comment": "9",
-  "comment_date": "2015-07-01 15:08",
-  "date_created": "1435756127",
-  "id": 464,
-  "parent": null,
-  "user": {
-    "fullname": "P.-Y.C.",
-    "name": "pingou"
-  }
-}"""
-
-
 class User:
     def __init__(self, username, fullname, default_email, emails=None):
         self.__username = username

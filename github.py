@@ -170,6 +170,7 @@ def handle_pull_request(post_body):
             gitRepository.pull(1)
             gitRepository.push(2)
 
+
 def handle_pull_request_comment(post_body):
 
     data = json.loads(post_body)  # parse web hook payload
