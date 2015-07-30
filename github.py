@@ -56,11 +56,12 @@ def handle_pull_request(post_body):
                 'link': data['pull_request']['html_url'],
                 'content': data['pull_request']['body'],
                 'patch_url': data['pull_request']['patch_url']}  # get github PR info
-        user_info = data['pull_request']['user']
+        get_url = data['pull_request']['user']['url']
+        r = requests.get(get_url, headers=githubHeader)
+        user_info = json.loads(r.text)
         if 'name' not in user_info:
             user_info['name'] = user_info['login']
         if 'email' not in user_info:
-            print("wow")
             user_info['name'] = "Lei Yang"  # if no user email, use a default account
             user_info['login'] = "yangl1996"
             user_info['email'] = "yltt1234512@gmail.com"
