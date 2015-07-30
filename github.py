@@ -10,7 +10,7 @@ import markdown
 from urllib.request import urlopen
 import libpagure
 import logging
-import gitoperator as git
+import git_interface as git
 try:
     import config
 except "No such file or directory":
