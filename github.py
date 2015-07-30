@@ -3,6 +3,7 @@ import json
 import datetime
 import requests
 import os
+import uuid
 import hmac
 import hashlib
 import threading
@@ -11,6 +12,7 @@ from urllib.request import urlopen
 import libpagure
 import logging
 import git_interface as git
+import formatter
 try:
     import config
 except "No such file or directory":
@@ -25,6 +27,7 @@ secretKey = config.githubSecretKey
 pagureToken = config.pagureToken
 pagureRepo = config.pagureRepo
 localRepoPath = config.localRepoPath
+localTicketRepoPath = config.localTicketRepoPath
 
 githubToken = config.githubToken
 githubHeader = {"Authorization": "token " + githubToken}
@@ -37,6 +40,7 @@ CIrepopath = config.ciRepoPath
 pagure = libpagure.Pagure(pagureToken, pagureRepo)
 
 gitRepository = git.Repository(localRepoPath, "origin", "pagure")  # remote 1 is github ('origin'), remote 2 is pagure
+ticketRepository = git.Repository(localTicketRepoPath, "origin", "origin")  # repote 1 and 2 are all pagure ('origin')
 
 
 # handle new pull request on github
@@ -52,9 +56,20 @@ def handle_pull_request(post_body):
                 'link': data['pull_request']['html_url'],
                 'content': data['pull_request']['body'],
                 'patch_url': data['pull_request']['patch_url']}  # get github PR info
-        pagure_title = "#{} {} by {}".format(str(info['id']),
-                                             info['title'],
-                                             info['creator'])  # generate pagure issue title
+        user_info = data['pull_request']['user']
+        if 'name' not in user_info:
+            user_info['name'] = user_info['login']
+        if 'email' not in user_info:
+            user_info['name'] = "Lei Yang"  # if no user email, use a default account
+            user_info['login'] = "yangl1996"
+            user_info['email'] = "yltt1234512@gmail.com"
+            pagure_title = "#{} {} by {}".format(str(info['id']),
+                                                 info['title'],
+                                                 info['creator'])  # generate pagure issue title
+        else:
+            pagure_title = "#{} {}".format(str(info['id']),
+                                           info['title'])  # generate pagure issue title
+        creator = formatter.User(user_info['login'], user_info['name'], user_info['email'])
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
 
@@ -115,7 +130,7 @@ def handle_pull_request(post_body):
         with open(patch_path + '/' + filelistname, 'w') as f:
             json.dump(filelistdata, f)
 
-        built_time_tag = "Last built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
+        built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
 
         # revert patch
         gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file), True)
@@ -145,7 +160,13 @@ def handle_pull_request(post_body):
                                                              filelist, built_time_tag, payfileadd, info['content'])
 
         # call pagure API to post the corresponding issue
-        pagure.create_issue(pagure_title, pagure_content)
+        new_issue = formatter.Issue(0, pagure_title, pagure_content, creator)
+        new_json = open(str(uuid.uuid4().hex), 'w')
+        new_json.write(new_issue.format_json())
+        new_json.close()
+        ticketRepository.pull(1)
+        ticketRepository.commit("add PR #{}".format(info['id']))
+        ticketRepository.push(1)
 
     # PR closed
     elif data['action'] == 'closed':

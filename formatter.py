@@ -10,7 +10,8 @@ class User:
         self.__default_email = default_email
         if not emails:
             self.__emails = [default_email]
-        self.__emails = emails
+        else:
+            self.__emails = emails
 
     @classmethod
     def load(cls, json_dict):
@@ -36,7 +37,7 @@ class User:
             self.__fullname = fullname
 
     def get_dict(self):
-        result = {"fullname": self.__fullname, "username": self.__username, "default_email": self.__default_email,
+        result = {"fullname": self.__fullname, "name": self.__username, "default_email": self.__default_email,
                   "emails": self.__emails}
         return result
 
@@ -222,7 +223,7 @@ class Issue:
         else:
             self.__assignee = new_assignee
 
-    def get_dict(self):
+    def get_dict(self, ui_id=False):
 
         data = {}
 
@@ -239,7 +240,8 @@ class Issue:
         data['content'] = self.__content
         data['date_created'] = self.__create_date
         data['depends'] = []  # TODO: implement this
-        data['id'] = self.__ui_id
+        if ui_id:
+            data['id'] = self.__ui_id
         data['private'] = self.__private
         data['status'] = self.__status
 
