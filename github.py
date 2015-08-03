@@ -13,6 +13,7 @@ import libpagure
 import logging
 import git_interface as git
 import formatter
+import sqlite3
 try:
     import config
 except "No such file or directory":
@@ -28,6 +29,7 @@ pagureToken = config.pagureToken
 pagureRepo = config.pagureRepo
 localRepoPath = config.localRepoPath
 localTicketRepoPath = config.localTicketRepoPath
+databasePath = config.databasePath
 
 githubToken = config.githubToken
 githubHeader = {"Authorization": "token " + githubToken}
@@ -163,13 +165,23 @@ def handle_pull_request(post_body):
 
         # call pagure API to post the corresponding issue
         new_issue = formatter.Issue(0, pagure_title, pagure_content, creator)
-        new_json_path = localTicketRepoPath + "/" + str(uuid.uuid4().hex)
+        new_json_name = str(uuid.uuid4().hex)
+        new_json_path = localTicketRepoPath + "/" + new_json_name
         new_json = open(new_json_path, 'w')
         new_json.write(new_issue.format_json())
         new_json.close()
         ticketRepository.pull(1)
         ticketRepository.commit("add PR #{}".format(info['id']))
         ticketRepository.push(1)
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        database_param = ()
+        c.execute("INSERT INTO stocks VALUES (?, ?, ?, ?, ?)", (info['title'],
+                                                                pagure_title,
+                                                                new_json_name,
+                                                                info['id'],
+                                                                0))
+
 
     # PR closed
     elif data['action'] == 'closed':
