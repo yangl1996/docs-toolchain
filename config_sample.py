@@ -8,6 +8,7 @@ githubPort = 7654  # The port listening to GitHub webhook
 pagurePort = 7655  # The port listening to Pagure webhook
 localRepoPath = ''  # Path to the local git repository
 localTicketRepoPath = ''  # Path to the local git repository holding the tickes JSON blobs
+databasePath = ''
 
 # GitHub Part
 githubSecretKey = ""  # Secret key used to sign the GitHub webhook data
