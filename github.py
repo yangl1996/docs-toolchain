@@ -143,6 +143,7 @@ def handle_pull_request(post_body):
                                                                pagure_title,
                                                                info['id'],
                                                                0,))  # first use 0 as pagure issue id
+        conn.commit()
         conn.close()
 
     # PR closed
