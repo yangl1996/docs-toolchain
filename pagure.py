@@ -60,11 +60,13 @@ def handle_added(post_body):
     # TODO: handle issues added on pagure (sync to GitHub issue?)
     if added_title.startswith("#"):
         logging.info("An mirror issue is added on Pagure.")
-        pr_id = int(entry[2])
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
         c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (added_id,
                                                                          added_title,))
+        c.execute('SELECT * From Requests WHERE PagureTitle=?', (added_title,))
+        entry = c.fetchone()
+        pr_id = int(entry[2])
         conn.commit()
         conn.close()
         # call github API to post a comment containing pagure issue link to github PR
