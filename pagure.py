@@ -63,12 +63,15 @@ def handle_added(post_body):
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE PagureTitle=?', (data['msg']['issue']['title'],))
         entry = c.fetchone()
+        conn.close()
         if entry is None:
             logging.warning("Can't find relevant issue in the database")
             return
         pr_id = int(entry[2])
-        c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (data['msg']['issue']['id'],
-                                                                           data['msg']['issue']['title'],))
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (added_id,
+                                                                         added_title,))
         conn.commit()
         conn.close()
         # call github API to post a comment containing pagure issue link to github PR
