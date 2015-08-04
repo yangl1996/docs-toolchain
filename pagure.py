@@ -67,8 +67,9 @@ def handle_added(post_body):
             logging.warning("Can't find relevant issue in the database")
             return
         pr_id = int(entry[2])
-        c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle = ?', (data['msg']['issue']['id'],
+        c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (data['msg']['issue']['id'],
                                                                            data['msg']['issue']['title'],))
+        conn.commit()
         conn.close()
         # call github API to post a comment containing pagure issue link to github PR
         pr_comment_link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
