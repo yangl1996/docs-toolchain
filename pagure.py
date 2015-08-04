@@ -39,7 +39,7 @@ def handle_edition(post_body):
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
         entry = c.fetchone()
-        pr_id = int(entry[3])
+        pr_id = int(entry[2])
         conn.close()
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, pr_id),
                          headers=githubHeader)  # get PR info from github
@@ -65,7 +65,8 @@ def handle_added(post_body):
         entry = c.fetchone()
         if entry is None:
             logging.warning("Can't find relevant issue in the database")
-        pr_id = int(entry[3])
+            return
+        pr_id = int(entry[2])
         c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle = ?', (data['msg']['issue']['id'],
                                                                            data['msg']['issue']['title'],))
         conn.close()
@@ -98,7 +99,7 @@ def handle_comment(post_body):
     c = conn.cursor()
     c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['title'],))
     entry = c.fetchone()
-    pr_id = int(entry[3])
+    pr_id = int(entry[2])
     conn.close()
     # call github API to post the comment
     comment_payload = json.dumps({"body": comment_body})

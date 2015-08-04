@@ -16,7 +16,6 @@ c.execute('''CREATE TABLE IF NOT EXISTS Requests
              (
              GitHubTitle text,
              PagureTitle text,
-             PagureHash text,
              GitHubID integer,
              PagureID integer
              )''')

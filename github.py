@@ -3,7 +3,6 @@ import json
 import datetime
 import requests
 import os
-import uuid
 import hmac
 import hashlib
 import threading
@@ -12,7 +11,6 @@ from urllib.request import urlopen
 import libpagure
 import logging
 import git_interface as git
-import formatter
 import sqlite3
 try:
     import config
@@ -28,7 +26,6 @@ githubHeader = {"Authorization": "token " + config.githubToken}
 pagure = libpagure.Pagure(config.pagureToken, config.pagureRepo)
 
 gitRepository = git.Repository(config.localRepoPath, "origin", "pagure")  # remote 1 github, remote 2 is pagure
-ticketRepository = git.Repository(config.localTicketRepoPath, "origin", "origin")  # repote 1 and 2 are all pagure
 
 
 # handle new pull request on github
@@ -47,9 +44,6 @@ def handle_pull_request(post_body):
         pagure_title = "#{} {} by {}".format(str(info['id']),
                                              info['title'],
                                              info['creator'])  # generate pagure issue title
-        creator = formatter.User(config.pagureUsername,
-                                 config.pagureFullname,
-                                 config.pagureEmail)
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
 
@@ -142,22 +136,13 @@ def handle_pull_request(post_body):
                                                              filelist, built_time_tag, payfileadd, info['content'])
 
         # call pagure API to post the corresponding issue
-        new_issue = formatter.Issue(0, pagure_title, pagure_content, creator)
-        new_json_name = str(uuid.uuid4().hex)
-        new_json_path = config.localTicketRepoPath + "/" + new_json_name
-        new_json = open(new_json_path, 'w')
-        new_json.write(new_issue.format_json())
-        new_json.close()
-        ticketRepository.pull(1)
-        ticketRepository.commit("add PR #{}".format(info['id']))
-        ticketRepository.push(1)
+        pagure.create_issue(pagure_title, pagure_content)
         conn = sqlite3.connect(config.databasePath)
         c = conn.cursor()
-        c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?, ?)", (info['title'],
-                                                                  pagure_title,
-                                                                  new_json_name,
-                                                                  info['id'],
-                                                                  0,))  # first use 0 as pagure issue id
+        c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?)", (info['title'],
+                                                               pagure_title,
+                                                               info['id'],
+                                                               0,))  # first use 0 as pagure issue id
         conn.close()
 
     # PR closed
@@ -170,7 +155,7 @@ def handle_pull_request(post_body):
             entry = c.fetchone()
             conn.close()
             logging.info("Pull request closed without being merged on GitHub.")
-            pagure_id = int(entry[4])  # get pagure issue id from the first comment
+            pagure_id = int(entry[3])  # get pagure issue id from the first comment
             pagure.change_issue_status(pagure_id, "Invalid")
 
         # merged
@@ -208,7 +193,7 @@ def handle_pull_request_comment(post_body):
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
         entry = c.fetchone()
         conn.close()
-        pagure_id = int(entry[4])  # get pagure issue id from the first comment
+        pagure_id = int(entry[3])  # get pagure issue id from the first comment
         # call pagure API to sync the comment
         pagure.comment_issue(pagure_id, comment_body)
 
