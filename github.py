@@ -22,27 +22,13 @@ except "No such file or directory":
     exit()
 
 # import configurations from config.py
-listenAddr = config.listenAddr
-listenPort = config.githubPort
-secretKey = config.githubSecretKey
-pagureToken = config.pagureToken
-pagureRepo = config.pagureRepo
-localRepoPath = config.localRepoPath
-localTicketRepoPath = config.localTicketRepoPath
-databasePath = config.databasePath
 
-githubToken = config.githubToken
-githubHeader = {"Authorization": "token " + githubToken}
-githubUsername = config.githubUsername
-githubRepo = config.githubRepo
+githubHeader = {"Authorization": "token " + config.githubToken}
 
-CIserver = config.ciServer
-CIrepopath = config.ciRepoPath
+pagure = libpagure.Pagure(config.pagureToken, config.pagureRepo)
 
-pagure = libpagure.Pagure(pagureToken, pagureRepo)
-
-gitRepository = git.Repository(localRepoPath, "origin", "pagure")  # remote 1 is github ('origin'), remote 2 is pagure
-ticketRepository = git.Repository(localTicketRepoPath, "origin", "origin")  # repote 1 and 2 are all pagure ('origin')
+gitRepository = git.Repository(config.localRepoPath, "origin", "pagure")  # remote 1 github, remote 2 is pagure
+ticketRepository = git.Repository(config.localTicketRepoPath, "origin", "origin")  # repote 1 and 2 are all pagure
 
 
 # handle new pull request on github
@@ -58,22 +44,12 @@ def handle_pull_request(post_body):
                 'link': data['pull_request']['html_url'],
                 'content': data['pull_request']['body'],
                 'patch_url': data['pull_request']['patch_url']}  # get github PR info
-        get_url = data['pull_request']['user']['url']
-        r = requests.get(get_url, headers=githubHeader)
-        user_info = json.loads(r.text)
-        if 'name' not in user_info:
-            user_info['name'] = user_info['login']
-        if 'email' not in user_info:
-            user_info['name'] = "Lei Yang"  # if no user email, use a default account
-            user_info['login'] = "yangl1996"
-            user_info['email'] = "yltt1234512@gmail.com"
-            pagure_title = "#{} {} by {}".format(str(info['id']),
-                                                 info['title'],
-                                                 info['creator'])  # generate pagure issue title
-        else:
-            pagure_title = "#{} {}".format(str(info['id']),
-                                           info['title'])  # generate pagure issue title
-        creator = formatter.User(user_info['login'], user_info['name'], user_info['email'])
+        pagure_title = "#{} {} by {}".format(str(info['id']),
+                                             info['title'],
+                                             info['creator'])  # generate pagure issue title
+        creator = formatter.User(config.pagureUsername,
+                                 config.pagureFullname,
+                                 config.pagureEmail)
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
 
@@ -81,14 +57,16 @@ def handle_pull_request(post_body):
 
         pr_id = str(info['id'])  # get github PR id
         # call github api to get modified file list of the PR
-        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, pr_id),
+        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(config.githubUsername,
+                                                                                    config.githubRepo,
+                                                                                    pr_id),
                          headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
 
         # Get Patch of PR
         patch_data = urlopen(info['patch_url'])
         patch_file = '{}.patch'.format(info['id'])
-        patch_path = "{}/localdata/{}/".format(localRepoPath, pr_id)
+        patch_path = "{}/localdata/{}/".format(config.localRepoPath, pr_id)
         
         # create dir
         if not os.path.exists(os.path.dirname(patch_path)):
@@ -118,17 +96,17 @@ def handle_pull_request(post_body):
             # create path
             filename = changed_file['filename']
             filename_no_extension = filename[:filename.rfind('.')]
-            if not os.path.exists(os.path.dirname(CIrepopath + '/' + pr_id + '/' + filename)):
-                os.makedirs(os.path.dirname(CIrepopath + '/' + pr_id + '/' + filename))
+            if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename)):
+                os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename))
 
-            markdown.markdownFromFile(input=localRepoPath + '/' + changed_file['filename'],
-                                      output="{}/{}/{}.html".format(CIrepopath, pr_id, filename_no_extension),
+            markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
+                                      output="{}/{}/{}.html".format(config.ciRepoPath, pr_id, filename_no_extension),
                                       output_format="html5")
             built = True
             filelistdata.append({'filename': filename,
                                  'built': built,
                                  'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
-            html_path = "{}/{}/{}.html".format(CIserver, pr_id, filename_no_extension)
+            html_path = "{}/{}/{}.html".format(config.ciServer, pr_id, filename_no_extension)
             payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
 
         with open(patch_path + '/' + filelistname, 'w') as f:
@@ -141,7 +119,7 @@ def handle_pull_request(post_body):
 
         # CI ends
 
-        pr_html_link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, pr_id)
+        pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, pr_id)
         pagure_content = """<table>
                                 <tr>
                                     <th>Creator</th>
@@ -166,14 +144,14 @@ def handle_pull_request(post_body):
         # call pagure API to post the corresponding issue
         new_issue = formatter.Issue(0, pagure_title, pagure_content, creator)
         new_json_name = str(uuid.uuid4().hex)
-        new_json_path = localTicketRepoPath + "/" + new_json_name
+        new_json_path = config.localTicketRepoPath + "/" + new_json_name
         new_json = open(new_json_path, 'w')
         new_json.write(new_issue.format_json())
         new_json.close()
         ticketRepository.pull(1)
         ticketRepository.commit("add PR #{}".format(info['id']))
         ticketRepository.push(1)
-        conn = sqlite3.connect(databasePath)
+        conn = sqlite3.connect(config.databasePath)
         c = conn.cursor()
         c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?, ?)", (info['title'],
                                                                   pagure_title,
@@ -182,12 +160,11 @@ def handle_pull_request(post_body):
                                                                   0,))  # first use 0 as pagure issue id
         conn.close()
 
-
     # PR closed
     elif data['action'] == 'closed':
         # not merged
         if not data['pull_request']['merged']:
-            conn = sqlite3.connect(databasePath)
+            conn = sqlite3.connect(config.databasePath)
             c = conn.cursor()
             c.execute('SELECT * FROM Requests WHERE GitHubID=?', (data['pull_request']['number'],))
             entry = c.fetchone()
@@ -226,7 +203,7 @@ def handle_pull_request_comment(post_body):
         # prepare pagure comment body
         comment_body = """*Commented by {}*\n\n{}""".format(info['username'], info['comment'])
 
-        conn = sqlite3.connect(databasePath)
+        conn = sqlite3.connect(config.databasePath)
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
         entry = c.fetchone()
@@ -249,7 +226,7 @@ class MyServer(BaseHTTPRequestHandler):
 
         if sha_name != 'sha1':
             return
-        mac = hmac.new(secretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
+        mac = hmac.new(config.githubSecretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
         if not hmac.compare_digest(mac.hexdigest(), signature):
             logging.warning("Ignoring a web hook call due to incorrect signature.")
             return
@@ -264,10 +241,10 @@ class MyServer(BaseHTTPRequestHandler):
             th.start()
 
 
-myServer = HTTPServer((listenAddr, listenPort), MyServer)
+myServer = HTTPServer((config.listenAddr, config.githubPort), MyServer)
 print("Syncing tool")
 logging.basicConfig(filename='github.log', level=logging.INFO)
-logging.info('Server starts ay %s:%s.', listenAddr, listenPort)
+logging.info('Server starts ay %s:%s.', config.listenAddr, config.githubPort)
 
 try:
     myServer.serve_forever()
