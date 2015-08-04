@@ -61,7 +61,7 @@ def handle_added(post_body):
         logging.info("An mirror issue is added on Pagure.")
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
-        c.execute('SELECT * FROM Requests WHERE PaugreTitle=?', (data['msg']['issue']['title'],))
+        c.execute('SELECT * FROM Requests WHERE PagureTitle=?', (data['msg']['issue']['title'],))
         entry = c.fetchone()
         if entry is None:
             logging.warning("Can't find relevant issue in the database")
