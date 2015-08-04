@@ -95,7 +95,7 @@ def handle_comment(post_body):
     {}""".format(info['fullname'], info['username'], info['comment'])  # generate comment body to be posted to github
     conn = sqlite3.connect(databasePath)
     c = conn.cursor()
-    c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['title'],))
+    c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
     entry = c.fetchone()
     pr_id = int(entry[2])
     conn.close()
