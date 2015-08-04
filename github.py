@@ -175,27 +175,25 @@ def handle_pull_request(post_body):
         ticketRepository.push(1)
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
-        database_param = ()
-        c.execute("INSERT INTO stocks VALUES (?, ?, ?, ?, ?)", (info['title'],
-                                                                pagure_title,
-                                                                new_json_name,
-                                                                info['id'],
-                                                                0))
+        c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?, ?)", (info['title'],
+                                                                  pagure_title,
+                                                                  new_json_name,
+                                                                  info['id'],
+                                                                  0,))  # first use 0 as pagure issue id
+        conn.close()
 
 
     # PR closed
     elif data['action'] == 'closed':
         # not merged
         if not data['pull_request']['merged']:
-            logging.info("Pull request closed with out being merged on GitHub.")
-            # call github issue comment list API to get pagure issue id
-            get_url = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
-                                                                                     githubRepo,
-                                                                                     data['pull_request']['number'])
-            r = requests.get(get_url, headers=githubHeader)
-            data = json.loads(r.text)  # parse API return value
-            info_body = data[0]['body']
-            pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
+            conn = sqlite3.connect(databasePath)
+            c = conn.cursor()
+            c.execute('SELECT * FROM Requests WHERE GitHubID=?', (data['pull_request']['number'],))
+            entry = c.fetchone()
+            conn.close()
+            logging.info("Pull request closed without being merged on GitHub.")
+            pagure_id = int(entry[4])  # get pagure issue id from the first comment
             pagure.change_issue_status(pagure_id, "Invalid")
 
         # merged
@@ -227,14 +225,13 @@ def handle_pull_request_comment(post_body):
 
         # prepare pagure comment body
         comment_body = """*Commented by {}*\n\n{}""".format(info['username'], info['comment'])
-        # call github issue comment list API to get pagure issue id
-        r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
-                                                                                        githubRepo,
-                                                                                        info['issue_id']),
-                         headers=githubHeader)
-        data = json.loads(r.text)  # parse API return value
-        info_body = data[0]['body']
-        pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
+
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
+        entry = c.fetchone()
+        conn.close()
+        pagure_id = int(entry[4])  # get pagure issue id from the first comment
         # call pagure API to sync the comment
         pagure.comment_issue(pagure_id, comment_body)
 
