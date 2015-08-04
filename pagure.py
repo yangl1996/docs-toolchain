@@ -70,6 +70,7 @@ def handle_added(post_body):
         pr_id = int(entry[2])
         conn = sqlite3.connect(databasePath)
         c = conn.cursor()
+        print(added_title)
         c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (added_id,
                                                                          added_title,))
         conn.commit()
