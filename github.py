@@ -135,8 +135,6 @@ def handle_pull_request(post_body):
                                 </table><hr>\n\n{}""".format(info['creator'], pr_html_link, pr_html_link,
                                                              filelist, built_time_tag, payfileadd, info['content'])
 
-        # call pagure API to post the corresponding issue
-        pagure.create_issue(pagure_title, pagure_content)
         conn = sqlite3.connect(config.databasePath)
         c = conn.cursor()
         c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?)", (info['title'],
@@ -145,6 +143,8 @@ def handle_pull_request(post_body):
                                                                0,))  # first use 0 as pagure issue id
         conn.commit()
         conn.close()
+        # call pagure API to post the corresponding issue
+        pagure.create_issue(pagure_title, pagure_content)
 
     # PR closed
     elif data['action'] == 'closed':

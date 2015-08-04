@@ -56,7 +56,6 @@ def handle_added(post_body):
     data = json.loads(post_body)  # parse web hook payload
     added_title = data['msg']['issue']['title']  # get added issue's title
     added_id = data['msg']['issue']['id']  # get added issue's id on pagure
-    print(added_title)
     # TODO: handle issues added on pagure (sync to GitHub issue?)
     if added_title.startswith("#"):
         logging.info("An mirror issue is added on Pagure.")
