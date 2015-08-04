@@ -4,6 +4,7 @@ import requests
 import threading
 import urllib.parse
 import logging
+import sqlite3
 try:
     import config
 except "No such file or directory":
@@ -14,6 +15,7 @@ except "No such file or directory":
 # import configurations from config.py
 listenAddr = config.listenAddr
 listenPort = config.pagurePort
+databasePath = config.databasePath
 pagureRepo = config.pagureRepo
 pagureToken = config.pagureToken
 pagureHeader = {"Authorization": "token " + pagureToken}
@@ -31,10 +33,14 @@ def handle_edition(post_body):
     Function to handle edited issue.
     """
     data = json.loads(post_body)  # parse web hook payload
-    deleted_title = data['msg']['issue']['title']  # get fixed issue's title
     if data['msg']['issue']['status'] == 'Fixed':
         logging.info("An issue is marked as fixed on Pagure.")
-        pr_id = int(deleted_title[1:deleted_title.find(' ')])  # get github PR id from the issue title
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
+        entry = c.fetchone()
+        pr_id = int(entry[2])
+        conn.close()
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(githubUsername, githubRepo, pr_id),
                          headers=githubHeader)  # get PR info from github
         return_data = json.loads(r.text)  # parse PR info
@@ -53,7 +59,15 @@ def handle_added(post_body):
     # TODO: handle issues added on pagure (sync to GitHub issue?)
     if added_title.startswith("#"):
         logging.info("An mirror issue is added on Pagure.")
-        pr_id = int(added_title[1:added_title.find(' ')])  # get github PR id from the issue title
+        conn = sqlite3.connect(databasePath)
+        c = conn.cursor()
+        c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (added_id,
+                                                                         added_title,))
+        c.execute('SELECT * From Requests WHERE PagureTitle=?', (added_title,))
+        entry = c.fetchone()
+        pr_id = int(entry[2])
+        conn.commit()
+        conn.close()
         # call github API to post a comment containing pagure issue link to github PR
         pr_comment_link = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
                                                                                          githubRepo,
@@ -79,7 +93,12 @@ def handle_comment(post_body):
     comment_body = """*Commented by {} ({})*
 
     {}""".format(info['fullname'], info['username'], info['comment'])  # generate comment body to be posted to github
-    pr_id = int(info['issue_title'][1:info['issue_title'].find(' ')])  # get github PR id from pagure issue title
+    conn = sqlite3.connect(databasePath)
+    c = conn.cursor()
+    c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
+    entry = c.fetchone()
+    pr_id = int(entry[2])
+    conn.close()
     # call github API to post the comment
     comment_payload = json.dumps({"body": comment_body})
     requests.post("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername, githubRepo, pr_id),

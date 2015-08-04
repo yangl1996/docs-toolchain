@@ -10,6 +10,8 @@ import markdown
 from urllib.request import urlopen
 import libpagure
 import logging
+import git_interface as git
+import sqlite3
 try:
     import config
 except "No such file or directory":
@@ -18,22 +20,12 @@ except "No such file or directory":
     exit()
 
 # import configurations from config.py
-listenAddr = config.listenAddr
-listenPort = config.githubPort
-secretKey = config.githubSecretKey
-pagureToken = config.pagureToken
-pagureRepo = config.pagureRepo
-localRepoPath = config.localRepoPath
 
-githubToken = config.githubToken
-githubHeader = {"Authorization": "token " + githubToken}
-githubUsername = config.githubUsername
-githubRepo = config.githubRepo
+githubHeader = {"Authorization": "token " + config.githubToken}
 
-CIserver = config.ciServer
-CIrepopath = config.ciRepoPath
+pagure = libpagure.Pagure(config.pagureToken, config.pagureRepo)
 
-pagure = libpagure.Pagure(pagureToken, pagureRepo)
+gitRepository = git.Repository(config.localRepoPath, "origin", "pagure")  # remote 1 github, remote 2 is pagure
 
 
 # handle new pull request on github
@@ -59,14 +51,16 @@ def handle_pull_request(post_body):
 
         pr_id = str(info['id'])  # get github PR id
         # call github api to get modified file list of the PR
-        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(githubUsername, githubRepo, pr_id),
+        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(config.githubUsername,
+                                                                                    config.githubRepo,
+                                                                                    pr_id),
                          headers=githubHeader)
         data = json.loads(r.text)  # parse api return value
 
         # Get Patch of PR
         patch_data = urlopen(info['patch_url'])
         patch_file = '{}.patch'.format(info['id'])
-        patch_path = "{}/localdata/{}/".format(localRepoPath, pr_id)
+        patch_path = "{}/localdata/{}/".format(config.localRepoPath, pr_id)
         
         # create dir
         if not os.path.exists(os.path.dirname(patch_path)):
@@ -78,8 +72,8 @@ def handle_pull_request(post_body):
         f.close()
 
         # apply patch
-        command = "cd {}\n".format(localRepoPath) + "git apply localdata/{}/{}\n".format(pr_id, patch_file)
-        os.system(command)
+
+        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file))
 
         # generate modified file list
         filelist = '<code>'
@@ -96,31 +90,30 @@ def handle_pull_request(post_body):
             # create path
             filename = changed_file['filename']
             filename_no_extension = filename[:filename.rfind('.')]
-            if not os.path.exists(os.path.dirname(CIrepopath + '/' + pr_id + '/' + filename)):
-                os.makedirs(os.path.dirname(CIrepopath + '/' + pr_id + '/' + filename))
+            if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename)):
+                os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename))
 
-            markdown.markdownFromFile(input=localRepoPath + '/' + changed_file['filename'],
-                                      output="{}/{}/{}.html".format(CIrepopath, pr_id, filename_no_extension),
+            markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
+                                      output="{}/{}/{}.html".format(config.ciRepoPath, pr_id, filename_no_extension),
                                       output_format="html5")
             built = True
             filelistdata.append({'filename': filename,
                                  'built': built,
                                  'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
-            html_path = "{}/{}/{}.html".format(CIserver, pr_id, filename_no_extension)
+            html_path = "{}/{}/{}.html".format(config.ciServer, pr_id, filename_no_extension)
             payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
 
         with open(patch_path + '/' + filelistname, 'w') as f:
             json.dump(filelistdata, f)
 
-        built_time_tag = "Last built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
+        built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
 
         # revert patch
-        command = "cd {}\n".format(localRepoPath) + "git apply -R localdata/{}/{}\n".format(pr_id, patch_file)
-        os.system(command)
+        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file), True)
 
         # CI ends
 
-        pr_html_link = "https://github.com/{}/{}/pull/{}".format(githubUsername, githubRepo, pr_id)
+        pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, pr_id)
         pagure_content = """<table>
                                 <tr>
                                     <th>Creator</th>
@@ -142,6 +135,14 @@ def handle_pull_request(post_body):
                                 </table><hr>\n\n{}""".format(info['creator'], pr_html_link, pr_html_link,
                                                              filelist, built_time_tag, payfileadd, info['content'])
 
+        conn = sqlite3.connect(config.databasePath)
+        c = conn.cursor()
+        c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?)", (info['title'],
+                                                               pagure_title,
+                                                               info['id'],
+                                                               0,))  # first use 0 as pagure issue id
+        conn.commit()
+        conn.close()
         # call pagure API to post the corresponding issue
         pagure.create_issue(pagure_title, pagure_content)
 
@@ -149,29 +150,22 @@ def handle_pull_request(post_body):
     elif data['action'] == 'closed':
         # not merged
         if not data['pull_request']['merged']:
-            logging.info("Pull request closed with out being merged on GitHub.")
-            # call github issue comment list API to get pagure issue id
-            get_url = "https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
-                                                                                     githubRepo,
-                                                                                     data['pull_request']['number'])
-            r = requests.get(get_url, headers=githubHeader)
-            data = json.loads(r.text)  # parse API return value
-            info_body = data[0]['body']
-            pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
+            conn = sqlite3.connect(config.databasePath)
+            c = conn.cursor()
+            c.execute('SELECT * FROM Requests WHERE GitHubID=?', (data['pull_request']['number'],))
+            entry = c.fetchone()
+            conn.close()
+            logging.info("Pull request closed without being merged on GitHub.")
+            pagure_id = int(entry[3])  # get pagure issue id from the first comment
             pagure.change_issue_status(pagure_id, "Invalid")
 
         # merged
         else:
-            # TODO: is there a more elegant way to do this?
             logging.info("Pull request merged on GitHub.")
-            # let Python use shell commands to pull the changes from github, then push changes to pagure
-            command = "cd " + localRepoPath + """
-            git pull origin master
-            git push pagure master
-            """
-            os.system(command)
 
-            # TODO: check whether the merge is successful
+            # let Python use shell commands to pull the changes from github, then push changes to pagure
+            gitRepository.pull(1)
+            gitRepository.push(2)
 
 
 def handle_pull_request_comment(post_body):
@@ -194,14 +188,13 @@ def handle_pull_request_comment(post_body):
 
         # prepare pagure comment body
         comment_body = """*Commented by {}*\n\n{}""".format(info['username'], info['comment'])
-        # call github issue comment list API to get pagure issue id
-        r = requests.get("https://api.github.com/repos/{}/{}/issues/{}/comments".format(githubUsername,
-                                                                                        githubRepo,
-                                                                                        info['issue_id']),
-                         headers=githubHeader)
-        data = json.loads(r.text)  # parse API return value
-        info_body = data[0]['body']
-        pagure_id = int(info_body[8:info_body.find(']')])  # get pagure issue id from the first comment
+
+        conn = sqlite3.connect(config.databasePath)
+        c = conn.cursor()
+        c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
+        entry = c.fetchone()
+        conn.close()
+        pagure_id = int(entry[3])  # get pagure issue id from the first comment
         # call pagure API to sync the comment
         pagure.comment_issue(pagure_id, comment_body)
 
@@ -219,7 +212,7 @@ class MyServer(BaseHTTPRequestHandler):
 
         if sha_name != 'sha1':
             return
-        mac = hmac.new(secretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
+        mac = hmac.new(config.githubSecretKey.encode(), msg=post_body.encode(), digestmod=hashlib.sha1)
         if not hmac.compare_digest(mac.hexdigest(), signature):
             logging.warning("Ignoring a web hook call due to incorrect signature.")
             return
@@ -234,10 +227,10 @@ class MyServer(BaseHTTPRequestHandler):
             th.start()
 
 
-myServer = HTTPServer((listenAddr, listenPort), MyServer)
+myServer = HTTPServer((config.listenAddr, config.githubPort), MyServer)
 print("Syncing tool")
 logging.basicConfig(filename='github.log', level=logging.INFO)
-logging.info('Server starts ay %s:%s.', listenAddr, listenPort)
+logging.info('Server starts ay %s:%s.', config.listenAddr, config.githubPort)
 
 try:
     myServer.serve_forever()
