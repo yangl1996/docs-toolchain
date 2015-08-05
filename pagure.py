@@ -7,7 +7,7 @@ import logging
 import sqlite3
 try:
     import config
-except "No such file or directory":
+except ImportError:
     import config_sample as config
     logging.critical("Configuration file not found.")
     exit()
