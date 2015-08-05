@@ -8,8 +8,7 @@ except "No such file or directory":
     exit()
 
 
-databasePath = config.databasePath
-conn = sqlite3.connect(databasePath)
+conn = sqlite3.connect(config.issueDatabasePath)
 
 c = conn.cursor()
 c.execute('''CREATE TABLE IF NOT EXISTS Requests

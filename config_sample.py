@@ -7,7 +7,7 @@ listenAddr = ""  # The address where the program is running
 githubPort = 7654  # The port listening to GitHub webhook
 pagurePort = 7655  # The port listening to Pagure webhook
 localRepoPath = ''  # Path to the local git repository
-databasePath = ''
+issueDatabasePath = ''
 
 # GitHub Part
 githubSecretKey = ""  # Secret key used to sign the GitHub webhook data

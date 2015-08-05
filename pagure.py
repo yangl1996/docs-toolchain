@@ -26,7 +26,7 @@ def handle_edition(post_body):
     data = json.loads(post_body)  # parse web hook payload
     if data['msg']['issue']['status'] == 'Fixed':
         logging.info("An issue is marked as fixed on Pagure.")
-        conn = sqlite3.connect(config.databasePath)
+        conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
         entry = c.fetchone()
@@ -55,7 +55,7 @@ def handle_added(post_body):
     added_title = data['msg']['issue']['title']  # get added issue's title
     added_id = data['msg']['issue']['id']  # get added issue's id on pagure
     # TODO: handle issues added on pagure (sync to GitHub issue?)
-    conn = sqlite3.connect(config.databasePath)
+    conn = sqlite3.connect(config.issueDatabasePath)
     c = conn.cursor()
     c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (added_id,
                                                                      added_title,))
@@ -92,7 +92,7 @@ def handle_comment(post_body):
     comment_body = """*Commented by {} ({})*
 
     {}""".format(info['fullname'], info['username'], info['comment'])  # generate comment body to be posted to github
-    conn = sqlite3.connect(config.databasePath)
+    conn = sqlite3.connect(config.issueDatabasePath)
     c = conn.cursor()
     c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
     entry = c.fetchone()

@@ -135,7 +135,7 @@ def handle_pull_request(post_body):
                                 </table><hr>\n\n{}""".format(info['creator'], pr_html_link, pr_html_link,
                                                              filelist, built_time_tag, payfileadd, info['content'])
 
-        conn = sqlite3.connect(config.databasePath)
+        conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?)", (info['title'],
                                                                pagure_title,
@@ -150,7 +150,7 @@ def handle_pull_request(post_body):
     elif data['action'] == 'closed':
         # not merged
         if not data['pull_request']['merged']:
-            conn = sqlite3.connect(config.databasePath)
+            conn = sqlite3.connect(config.issueDatabasePath)
             c = conn.cursor()
             c.execute('SELECT * FROM Requests WHERE GitHubID=?', (data['pull_request']['number'],))
             entry = c.fetchone()
@@ -188,7 +188,7 @@ def handle_pull_request_comment(post_body):
         # prepare pagure comment body
         comment_body = """*Commented by {}*\n\n{}""".format(info['username'], info['comment'])
 
-        conn = sqlite3.connect(config.databasePath)
+        conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
         entry = c.fetchone()
