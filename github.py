@@ -174,7 +174,6 @@ def handle_pull_request_comment(post_body):
 
     # currently github are not providing comment deletion web hook, so only handle creation
     if data['action'] == 'created':
-        logging.info("New comment created on GitHub.")
         info = {'issue_name': data['issue']['title'],
                 'issue_id': data['issue']['number'],
                 'comment': data['comment']['body'],
@@ -194,9 +193,13 @@ def handle_pull_request_comment(post_body):
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
         entry = c.fetchone()
         conn.close()
-        pagure_id = int(entry[3])  # get pagure issue id from the first comment
-        # call pagure API to sync the comment
-        pagure.comment_issue(pagure_id, comment_body)
+        try:
+            pagure_id = int(entry[3])  # get pagure issue id from the first comment
+            # call pagure API to sync the comment
+            pagure.comment_issue(pagure_id, comment_body)
+            logging.info("New comment created on GitHub.")
+        except TypeError:
+            logging.warning("A comment was created on github but has no relevant Pagure issue.")
 
 
 # main server class
