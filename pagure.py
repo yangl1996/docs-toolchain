@@ -30,8 +30,13 @@ def handle_edition(post_body):
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE PagureID=?', (data['msg']['issue']['id'],))
         entry = c.fetchone()
-        pr_id = int(entry[2])
-        conn.close()
+        try:
+            pr_id = int(entry[2])
+            conn.close()
+        except TypeError:
+            logging.warning("No issue numbered {} found in database.".format(data['msg']['issue']['id']))
+            conn.close()
+            return
         r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}".format(config.githubUsername,
                                                                               config.githubRepo,
                                                                               pr_id),
