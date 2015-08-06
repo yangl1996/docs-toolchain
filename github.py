@@ -28,6 +28,51 @@ pagure = libpagure.Pagure(config.pagureToken, config.pagureRepo)
 gitRepository = git.Repository(config.localRepoPath, "origin", "pagure")  # remote 1 github, remote 2 is pagure
 
 
+def ci_build(pull_request_id, patch_url):
+    r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(config.githubUsername,
+                                                                                config.githubRepo,
+                                                                                pull_request_id),
+                     headers=githubHeader)
+    data = json.loads(r.text)
+    patch_data = urlopen(patch_url)
+    patch_file = '{}.patch'.format(pull_request_id)
+    patch_path = '{}/localdata/{}/'.format(config.localRepoPath, pull_request_id)
+
+    if not os.path.exists(os.path.dirname(patch_path)):
+        os.makedirs(os.path.dirname(patch_path))
+
+    f = open(patch_path + patch_file, 'w')
+    f.write(patch_data.read().decode('utf-8'))
+    f.close()
+
+    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file))
+
+    filelist = []
+    for changed_file in data:
+        this_file = {'filename': changed_file['filename'],
+                     'status': changed_file['status'],
+                     'built': False,
+                     'built_path': ''}
+        try:
+            if this_file['status'] != 'removed':
+                filename = this_file['filename']
+                if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pull_request_id + '/' + filename)):
+                    os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pull_request_id + '/' + filename))
+                markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
+                                          output="{}/{}/{}.html".format(config.ciRepoPath,
+                                                                        pull_request_id,
+                                                                        filename),
+                                          output_format="html5")
+                this_file['built_path'] = "{}/{}.html".format(pull_request_id, filename)
+                this_file['built'] = True
+        finally:
+            filelist.append(this_file)
+    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file), True)
+    filelist_name = "filelist-pr-{}.json".format(pull_request_id)
+    with open(patch_path + '/' + filelist_name, 'w') as f:
+        json.dump(filelist, f)
+
+
 # handle new pull request on github
 def handle_pull_request(post_body):
     data = json.loads(post_body)  # parse web hook payload
@@ -47,74 +92,32 @@ def handle_pull_request(post_body):
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
 
-        # CI Starts
+        ci_build(info['id'], info['patch_url'])
 
-        pr_id = str(info['id'])  # get github PR id
-        # call github api to get modified file list of the PR
-        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(config.githubUsername,
-                                                                                    config.githubRepo,
-                                                                                    pr_id),
-                         headers=githubHeader)
-        data = json.loads(r.text)  # parse api return value
-
-        # Get Patch of PR
-        patch_data = urlopen(info['patch_url'])
-        patch_file = '{}.patch'.format(info['id'])
-        patch_path = "{}/localdata/{}/".format(config.localRepoPath, pr_id)
-        
-        # create dir
-        if not os.path.exists(os.path.dirname(patch_path)):
-            os.makedirs(os.path.dirname(patch_path))
-        
-        # save patch
-        f = open(patch_path + patch_file, 'w')
-        f.write(patch_data.read().decode('utf-8'))
-        f.close()
-
-        # apply patch
-
-        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file))
-
-        # generate modified file list
         filelist = '<code>'
-        for changed_file in data:
-            filelist += "{}\n".format(changed_file['filename'])
-        filelist += "</code>"
 
         # TODO: dump filelist and on update check
-        filelistname = "filelist-pr-{}.json".format(pr_id)
-        filelistdata = []
-        payfileadd = ' '
-        
-        for changed_file in data:
-            # create path
-            if changed_file['status'] != 'deleted':
-                filename = changed_file['filename']
-                filename_no_extension = filename[:filename.rfind('.')]
-                if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename)):
-                    os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename))
-
-                markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
-                                          output="{}/{}/{}.html".format(config.ciRepoPath, pr_id, filename_no_extension),
-                                          output_format="html5")
-                built = True
-                filelistdata.append({'filename': filename,
-                                     'built': built,
-                                     'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
-                html_path = "{}/{}/{}.html".format(config.ciServer, pr_id, filename_no_extension)
-                payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
-
-        with open(patch_path + '/' + filelistname, 'w') as f:
-            json.dump(filelistdata, f)
+        patch_path = '{}/localdata/{}/'.format(config.localRepoPath, info['id'])
+        filelist_name = "filelist-pr-{}.json".format(info['id'])
+        file_list_json = open(patch_path + '/' + filelist_name, 'r')
+        changed_file_list = json.loads(file_list_json.read())
+        file_list_json.close()
+        preview_html = ""
+        for changed_file in changed_file_list:
+            filelist += "{}\n".format(changed_file['filename'])
+            if changed_file['built']:
+                preview_html += """<tr>
+                                     <th></th>
+                                     <td><a href="{}" target="_blank">{}</a></td>
+                                   </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
+                                                   changed_file['filename'])
 
         built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
-
-        # revert patch
-        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file), True)
+        filelist += "</code>"
 
         # CI ends
 
-        pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, pr_id)
+        pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, info['id'])
         pagure_content = """<table>
                                 <tr>
                                     <th>Creator</th>
@@ -134,7 +137,7 @@ def handle_pull_request(post_body):
                                 </tr>
                                 {}
                                 </table><hr>\n\n{}""".format(info['creator'], pr_html_link, pr_html_link,
-                                                             filelist, built_time_tag, payfileadd, info['content'])
+                                                             filelist, built_time_tag, preview_html, info['content'])
 
         conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
