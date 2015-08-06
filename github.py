@@ -45,7 +45,9 @@ def ci_build(pull_request_id, patch_url):
     f.write(patch_data.read().decode('utf-8'))
     f.close()
 
+    print("before all")
     gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file))
+    print("before two")
 
     filelist = []
     for changed_file in data:
@@ -68,6 +70,7 @@ def ci_build(pull_request_id, patch_url):
         finally:
             filelist.append(this_file)
     gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file), True)
+    print("after all")
     filelist_name = "filelist-pr-{}.json".format(pull_request_id)
     with open(patch_path + '/' + filelist_name, 'w') as f:
         json.dump(filelist, f)
