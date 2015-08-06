@@ -14,7 +14,7 @@ import git_interface as git
 import sqlite3
 try:
     import config
-except "No such file or directory":
+except ImportError:
     import config_sample as config
     logging.critical("Configuration file not found.")
     exit()
@@ -26,6 +26,54 @@ githubHeader = {"Authorization": "token " + config.githubToken}
 pagure = libpagure.Pagure(config.pagureToken, config.pagureRepo)
 
 gitRepository = git.Repository(config.localRepoPath, "origin", "pagure")  # remote 1 github, remote 2 is pagure
+
+
+def ci_build(pull_request_id, patch_url):
+    r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(config.githubUsername,
+                                                                                config.githubRepo,
+                                                                                pull_request_id),
+                     headers=githubHeader)
+    data = json.loads(r.text)
+    patch_data = urlopen(patch_url)
+    patch_file = '{}.patch'.format(pull_request_id)
+    patch_path = '{}/localdata/{}/'.format(config.localRepoPath, pull_request_id)
+
+    if not os.path.exists(os.path.dirname(patch_path)):
+        os.makedirs(os.path.dirname(patch_path))
+
+    f = open(patch_path + patch_file, 'w')
+    f.write(patch_data.read().decode('utf-8'))
+    f.close()
+
+    print("before all")
+    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file))
+    print("before two")
+
+    filelist = []
+    for changed_file in data:
+        this_file = {'filename': changed_file['filename'],
+                     'status': changed_file['status'],
+                     'built': False,
+                     'built_path': ''}
+        try:
+            if this_file['status'] != 'removed':
+                filename = this_file['filename']
+                if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + str(pull_request_id) + '/' + filename)):
+                    os.makedirs(os.path.dirname(config.ciRepoPath + '/' + str(pull_request_id) + '/' + filename))
+                markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
+                                          output="{}/{}/{}.html".format(config.ciRepoPath,
+                                                                        pull_request_id,
+                                                                        filename),
+                                          output_format="html5")
+                this_file['built_path'] = "{}/{}.html".format(pull_request_id, filename)
+                this_file['built'] = True
+        finally:
+            filelist.append(this_file)
+    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file), True)
+    print("after all")
+    filelist_name = "filelist-pr-{}.json".format(pull_request_id)
+    with open(patch_path + '/' + filelist_name, 'w') as f:
+        json.dump(filelist, f)
 
 
 # handle new pull request on github
@@ -47,73 +95,33 @@ def handle_pull_request(post_body):
         if not info['content']:  # empty PR description
             info['content'] = "*No description provided.*"
 
-        # CI Starts
+        ci_build(info['id'], info['patch_url'])
 
-        pr_id = str(info['id'])  # get github PR id
-        # call github api to get modified file list of the PR
-        r = requests.get("https://api.github.com/repos/{}/{}/pulls/{}/files".format(config.githubUsername,
-                                                                                    config.githubRepo,
-                                                                                    pr_id),
-                         headers=githubHeader)
-        data = json.loads(r.text)  # parse api return value
-
-        # Get Patch of PR
-        patch_data = urlopen(info['patch_url'])
-        patch_file = '{}.patch'.format(info['id'])
-        patch_path = "{}/localdata/{}/".format(config.localRepoPath, pr_id)
-        
-        # create dir
-        if not os.path.exists(os.path.dirname(patch_path)):
-            os.makedirs(os.path.dirname(patch_path))
-        
-        # save patch
-        f = open(patch_path + patch_file, 'w')
-        f.write(patch_data.read().decode('utf-8'))
-        f.close()
-
-        # apply patch
-
-        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file))
-
-        # generate modified file list
         filelist = '<code>'
-        for changed_file in data:
-            filelist += "{}\n".format(changed_file['filename'])
-        filelist += "</code>"
 
         # TODO: dump filelist and on update check
-        filelistname = "filelist-pr-{}.json".format(pr_id)
-        filelistdata = []
-        payfileadd = ' '
-        
-        for changed_file in data:
-            # create path
-            filename = changed_file['filename']
-            filename_no_extension = filename[:filename.rfind('.')]
-            if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename)):
-                os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename))
+        patch_path = '{}/localdata/{}/'.format(config.localRepoPath, info['id'])
+        filelist_name = "filelist-pr-{}.json".format(info['id'])
+        file_list_json = open(patch_path + '/' + filelist_name, 'r')
+        changed_file_list = json.loads(file_list_json.read())
+        file_list_json.close()
+        preview_html = ""
+        for changed_file in changed_file_list:
+            filelist += "{}\n".format(changed_file['filename'])
+            if changed_file['built']:
+                preview_html += """<tr>
+                                     <th></th>
+                                     <td><a href="{}" target="_blank">{}</a></td>
+                                   </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
+                                                   changed_file['filename'])
 
-            markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
-                                      output="{}/{}/{}.html".format(config.ciRepoPath, pr_id, filename_no_extension),
-                                      output_format="html5")
-            built = True
-            filelistdata.append({'filename': filename,
-                                 'built': built,
-                                 'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
-            html_path = "{}/{}/{}.html".format(config.ciServer, pr_id, filename_no_extension)
-            payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
+        if len(changed_file_list) == 0:
+            built_time_tag = "No preview available."
+        else:
+            built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
 
-        with open(patch_path + '/' + filelistname, 'w') as f:
-            json.dump(filelistdata, f)
-
-        built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
-
-        # revert patch
-        gitRepository.apply("localdata/{}/{}".format(pr_id, patch_file), True)
-
-        # CI ends
-
-        pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, pr_id)
+        filelist += "</code>"
+        pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, info['id'])
         pagure_content = """<table>
                                 <tr>
                                     <th>Creator</th>
@@ -133,9 +141,9 @@ def handle_pull_request(post_body):
                                 </tr>
                                 {}
                                 </table><hr>\n\n{}""".format(info['creator'], pr_html_link, pr_html_link,
-                                                             filelist, built_time_tag, payfileadd, info['content'])
+                                                             filelist, built_time_tag, preview_html, info['content'])
 
-        conn = sqlite3.connect(config.databasePath)
+        conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute("INSERT INTO Requests VALUES (?, ?, ?, ?)", (info['title'],
                                                                pagure_title,
@@ -150,14 +158,17 @@ def handle_pull_request(post_body):
     elif data['action'] == 'closed':
         # not merged
         if not data['pull_request']['merged']:
-            conn = sqlite3.connect(config.databasePath)
+            conn = sqlite3.connect(config.issueDatabasePath)
             c = conn.cursor()
             c.execute('SELECT * FROM Requests WHERE GitHubID=?', (data['pull_request']['number'],))
             entry = c.fetchone()
             conn.close()
-            logging.info("Pull request closed without being merged on GitHub.")
-            pagure_id = int(entry[3])  # get pagure issue id from the first comment
-            pagure.change_issue_status(pagure_id, "Invalid")
+            try:
+                pagure_id = int(entry[3])  # get pagure issue id from the first comment
+                pagure.change_issue_status(pagure_id, "Invalid")
+                logging.info("Pull request closed without being merged on GitHub.")
+            except TypeError:
+                logging.warning("A PR was closed but has no corresponding Pagure issue.")
 
         # merged
         else:
@@ -174,7 +185,6 @@ def handle_pull_request_comment(post_body):
 
     # currently github are not providing comment deletion web hook, so only handle creation
     if data['action'] == 'created':
-        logging.info("New comment created on GitHub.")
         info = {'issue_name': data['issue']['title'],
                 'issue_id': data['issue']['number'],
                 'comment': data['comment']['body'],
@@ -189,14 +199,18 @@ def handle_pull_request_comment(post_body):
         # prepare pagure comment body
         comment_body = """*Commented by {}*\n\n{}""".format(info['username'], info['comment'])
 
-        conn = sqlite3.connect(config.databasePath)
+        conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['issue_id'],))
         entry = c.fetchone()
         conn.close()
-        pagure_id = int(entry[3])  # get pagure issue id from the first comment
-        # call pagure API to sync the comment
-        pagure.comment_issue(pagure_id, comment_body)
+        try:
+            pagure_id = int(entry[3])  # get pagure issue id from the first comment
+            # call pagure API to sync the comment
+            pagure.comment_issue(pagure_id, comment_body)
+            logging.info("New comment created on GitHub.")
+        except TypeError:
+            logging.warning("A comment was created on github but has no relevant Pagure issue.")
 
 
 # main server class
