@@ -99,7 +99,6 @@ def handle_pull_request(post_body):
 
         filelist = '<code>'
 
-        # TODO: dump filelist and on update check
         patch_path = '{}/localdata/{}/'.format(config.localRepoPath, info['id'])
         filelist_name = "filelist-pr-{}.json".format(info['id'])
         file_list_json = open(patch_path + '/' + filelist_name, 'r')
@@ -153,6 +152,43 @@ def handle_pull_request(post_body):
         conn.close()
         # call pagure API to post the corresponding issue
         pagure.create_issue(pagure_title, pagure_content)
+
+    elif data['action'] == 'synchronize':
+        logging.info("New commits pushed to existing pull request.")
+        info = {'id': data['pull_request']['number'], 'patch_url': data['pull_request']['patch_url']}
+        ci_build(info['id'], info['patch_url'])
+        patch_path = '{}/localdata/{}/'.format(config.localRepoPath, info['id'])  # path to corresponding patch folder
+        filelist_name = "filelist-pr-{}.json".format(info['id'])
+        file_list_json = open(patch_path + '/' + filelist_name, 'r')
+        changed_file_list = json.loads(file_list_json.read())
+        file_list_json.close()
+        preview_html = "<hr><table>"
+        for changed_file in changed_file_list:
+            if changed_file['built']:
+                preview_html += """<tr>
+                                     <th></th>
+                                     <td><a href="{}" target="_blank">{}</a></td>
+                                   </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
+                                                   changed_file['filename'])
+        preview_html += "</table><hr>"
+        if len(changed_file_list) == 0:
+            built_time_tag = "No preview available."
+        else:
+            built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
+        pagure_content = "New commits have been pushed to the tracked branch.\n\n"
+        pagure_content += preview_html
+        pagure_content += "\n\n"
+        pagure_content += built_time_tag
+        conn = sqlite3.connect(config.issueDatabasePath)
+        c = conn.cursor()
+        c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['id'],))
+        conn.close()
+        try:
+            entry = c.fetchone()
+            pagure_id = int(entry[3])
+            pagure.comment_issue(pagure_id, pagure_content)
+        except TypeError:
+            logging.warning("Can't find corresponding pagure issue.")
 
     # PR closed
     elif data['action'] == 'closed':
