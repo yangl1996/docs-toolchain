@@ -16,13 +16,12 @@ except ImportError:
 pagureHeader = {"Authorization": "token " + config.pagureToken}
 githubHeader = {"Authorization": "token " + config.githubToken}
 
-# TODO: how to handle merge conflict
-
 
 def handle_edition(post_body):
     """
     Function to handle edited issue.
     """
+    #  shall we mirror issues on pagure to github?
     data = json.loads(post_body)  # parse web hook payload
     if data['msg']['issue']['status'] == 'Fixed':
         logging.info("An issue is marked as fixed on Pagure.")
@@ -54,7 +53,6 @@ def handle_added(post_body):
     data = json.loads(post_body)  # parse web hook payload
     added_title = data['msg']['issue']['title']  # get added issue's title
     added_id = data['msg']['issue']['id']  # get added issue's id on pagure
-    # TODO: handle issues added on pagure (sync to GitHub issue?)
     conn = sqlite3.connect(config.issueDatabasePath)
     c = conn.cursor()
     c.execute('UPDATE Requests SET PagureID=? WHERE PagureTitle=?', (added_id,
@@ -80,7 +78,7 @@ def handle_added(post_body):
 
 
 def handle_comment(post_body):
-    # TODO: need handle comment deletion
+    #  github has no api for deleting comment, so can't implement this part
     data = json.loads(post_body)  # parse web hook payload
     info = {'comment': data['msg']['issue']['comments'][-1]['comment'],
             'issue_title': data['msg']['issue']['title'],

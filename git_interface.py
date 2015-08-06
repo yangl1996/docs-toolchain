@@ -1,6 +1,6 @@
 import os
 # operates on master branch
-# TODO: error handling
+# TODO: error handling, merge conflict handling
 
 
 class Repository:
