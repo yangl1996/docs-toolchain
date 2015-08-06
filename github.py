@@ -179,9 +179,9 @@ def handle_pull_request(post_body):
         conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['id'],))
+        entry = c.fetchone()
         conn.close()
         try:
-            entry = c.fetchone()
             pagure_id = int(entry[3])
             pagure.comment_issue(pagure_id, pagure_content)
         except TypeError:
