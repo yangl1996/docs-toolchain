@@ -56,8 +56,8 @@ def ci_build(pull_request_id, patch_url):
         try:
             if this_file['status'] != 'removed':
                 filename = this_file['filename']
-                if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pull_request_id + '/' + filename)):
-                    os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pull_request_id + '/' + filename))
+                if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + str(pull_request_id) + '/' + filename)):
+                    os.makedirs(os.path.dirname(config.ciRepoPath + '/' + str(pull_request_id) + '/' + filename))
                 markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
                                           output="{}/{}/{}.html".format(config.ciRepoPath,
                                                                         pull_request_id,
@@ -112,11 +112,12 @@ def handle_pull_request(post_body):
                                    </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
                                                    changed_file['filename'])
 
-        built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
+        if len(changed_file_list) == 0:
+            built_time_tag = "No preview available."
+        else:
+            built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
+
         filelist += "</code>"
-
-        # CI ends
-
         pr_html_link = "https://github.com/{}/{}/pull/{}".format(config.githubUsername, config.githubRepo, info['id'])
         pagure_content = """<table>
                                 <tr>
