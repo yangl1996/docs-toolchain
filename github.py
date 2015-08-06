@@ -88,20 +88,21 @@ def handle_pull_request(post_body):
         
         for changed_file in data:
             # create path
-            filename = changed_file['filename']
-            filename_no_extension = filename[:filename.rfind('.')]
-            if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename)):
-                os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename))
+            if changed_file['status'] != 'deleted':
+                filename = changed_file['filename']
+                filename_no_extension = filename[:filename.rfind('.')]
+                if not os.path.exists(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename)):
+                    os.makedirs(os.path.dirname(config.ciRepoPath + '/' + pr_id + '/' + filename))
 
-            markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
-                                      output="{}/{}/{}.html".format(config.ciRepoPath, pr_id, filename_no_extension),
-                                      output_format="html5")
-            built = True
-            filelistdata.append({'filename': filename,
-                                 'built': built,
-                                 'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
-            html_path = "{}/{}/{}.html".format(config.ciServer, pr_id, filename_no_extension)
-            payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
+                markdown.markdownFromFile(input=config.localRepoPath + '/' + changed_file['filename'],
+                                          output="{}/{}/{}.html".format(config.ciRepoPath, pr_id, filename_no_extension),
+                                          output_format="html5")
+                built = True
+                filelistdata.append({'filename': filename,
+                                     'built': built,
+                                     'builtfile': "{}/{}.html".format(pr_id, filename_no_extension)})
+                html_path = "{}/{}/{}.html".format(config.ciServer, pr_id, filename_no_extension)
+                payfileadd += '<tr><th></th><td><a href="{}" target="_blank">{}</a></td></tr>'.format(html_path, filename)
 
         with open(patch_path + '/' + filelistname, 'w') as f:
             json.dump(filelistdata, f)
