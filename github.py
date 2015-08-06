@@ -159,11 +159,10 @@ def handle_pull_request(post_body):
         file_list_json = open(patch_path + '/' + filelist_name, 'r')
         changed_file_list = json.loads(file_list_json.read())
         file_list_json.close()
-        preview_html = "<hr><table>"
+        preview_html = "<hr><table><tr><th>Preview</th></tr>"
         for changed_file in changed_file_list:
             if changed_file['built']:
                 preview_html += """<tr>
-                                     <th></th>
                                      <td><a href="{}" target="_blank">{}</a></td>
                                    </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
                                                    changed_file['filename'])
@@ -172,7 +171,7 @@ def handle_pull_request(post_body):
             built_time_tag = "No preview available."
         else:
             built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
-        pagure_content = "New commits have been pushed to the tracked branch.\n\n"
+        pagure_content = "*Commented by the toolchain*\n\nNew commits have been pushed to the tracked branch.\n\n"
         pagure_content += preview_html
         pagure_content += "\n\n"
         pagure_content += built_time_tag
