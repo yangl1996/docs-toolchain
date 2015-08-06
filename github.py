@@ -155,9 +155,12 @@ def handle_pull_request(post_body):
             c.execute('SELECT * FROM Requests WHERE GitHubID=?', (data['pull_request']['number'],))
             entry = c.fetchone()
             conn.close()
-            logging.info("Pull request closed without being merged on GitHub.")
-            pagure_id = int(entry[3])  # get pagure issue id from the first comment
-            pagure.change_issue_status(pagure_id, "Invalid")
+            try:
+                pagure_id = int(entry[3])  # get pagure issue id from the first comment
+                pagure.change_issue_status(pagure_id, "Invalid")
+                logging.info("Pull request closed without being merged on GitHub.")
+            except TypeError:
+                logging.warning("A PR was closed but has no corresponding Pagure issue.")
 
         # merged
         else:
