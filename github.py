@@ -100,16 +100,18 @@ def handle_pull_request(post_body):
         changed_file_list = json.loads(file_list_json.read())
         file_list_json.close()
         preview_html = ""
+        build_file_count = 0
         for changed_file in changed_file_list:
             filelist += "{}\n".format(changed_file['filename'])
             if changed_file['built']:
+                build_file_count += 1
                 preview_html += """<tr>
                                      <th></th>
                                      <td><a href="{}" target="_blank">{}</a></td>
                                    </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
                                                    changed_file['filename'])
 
-        if len(changed_file_list) == 0:
+        if build_file_count == 0:
             built_time_tag = "No preview available."
         else:
             built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
