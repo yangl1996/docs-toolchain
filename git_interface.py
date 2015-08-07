@@ -38,3 +38,7 @@ class Repository:
         else:
             command = """cd {} \n git apply -R {} \n""".format(self.__path, patch_path)
         os.system(command)
+
+    def stash(self):
+        command = """cd {} \n git stash --all \n""".format(self.__path)
+        os.system(command)
