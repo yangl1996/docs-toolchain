@@ -152,7 +152,21 @@ def handle_pull_request(post_body):
         logging.info("New commits pushed to existing pull request.")
         info = {'id': data['pull_request']['number'], 'patch_url': data['pull_request']['patch_url']}
         ci_build(info['id'], info['patch_url'])
-        pagure_content = "*Commented by the toolchain*\n\nNew commits pushed to tracked branch. Preview updated.\n\n"
+        pagure_content = "*Commented by the toolchain*\n\n```\n"
+        pagure_content += "New commits pushed to tracked branch. Preview has been updated.\n"
+
+        patch_path = '{}/{}/'.format(config.patchFolderPath, info['id'])
+        filelist_name = "filelist-pr-{}.json".format(info['id'])
+        file_list_json = open(patch_path + '/' + filelist_name, 'r')
+        changed_file_list = json.loads(file_list_json.read())
+        file_list_json.close()
+        for changed_file in changed_file_list:
+            if changed_file['built']:
+                pagure_content += "[{}]({}/{})\n".format(changed_file['filename'],
+                                                         config.ciServer,
+                                                         changed_file['built_path'])
+        pagure_content += "```\n"
+
         conn = sqlite3.connect(config.issueDatabasePath)
         c = conn.cursor()
         c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['id'],))
