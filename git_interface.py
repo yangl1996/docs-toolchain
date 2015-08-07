@@ -15,7 +15,7 @@ class Repository:
             remote = self.__remote_1
         elif remote_index == 2:
             remote = self.__remote_2
-        command = """cd {} \n git checkout master \n git stash --all \n git pull {} master \n""".format(self.__path,
+        command = """cd {} \n git checkout master \n git pull {} master \n""".format(self.__path,
                                                                                                         remote)
         os.system(command)
 

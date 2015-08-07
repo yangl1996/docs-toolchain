@@ -36,7 +36,7 @@ def ci_build(pull_request_id, patch_url):
     data = json.loads(r.text)
     patch_data = urlopen(patch_url)
     patch_file = '{}.patch'.format(pull_request_id)
-    patch_path = '{}/localdata/{}/'.format(config.localRepoPath, pull_request_id)
+    patch_path = '{}/{}/'.format(config.patchFolderPath, pull_request_id)
 
     if not os.path.exists(os.path.dirname(patch_path)):
         os.makedirs(os.path.dirname(patch_path))
@@ -44,9 +44,7 @@ def ci_build(pull_request_id, patch_url):
     f = open(patch_path + patch_file, 'w')
     f.write(patch_data.read().decode('utf-8'))
     f.close()
-    print("befor all")
-    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file))
-    print("after 1")
+    gitRepository.apply("{}/{}".format(patch_path, patch_file))
     filelist = []
     for changed_file in data:
         this_file = {'filename': changed_file['filename'],
@@ -67,11 +65,10 @@ def ci_build(pull_request_id, patch_url):
                 this_file['built'] = True
         finally:
             filelist.append(this_file)
-    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file), True)
+    gitRepository.apply("{}/{}".format(patch_path, patch_file), True)
     filelist_name = "filelist-pr-{}.json".format(pull_request_id)
     with open(patch_path + '/' + filelist_name, 'w') as f:
         json.dump(filelist, f)
-    print("after all")
 
 
 # handle new pull request on github
@@ -97,7 +94,7 @@ def handle_pull_request(post_body):
 
         filelist = '<code>'
 
-        patch_path = '{}/localdata/{}/'.format(config.localRepoPath, info['id'])
+        patch_path = '{}/{}/'.format(config.patchFolderPath, info['id'])
         filelist_name = "filelist-pr-{}.json".format(info['id'])
         file_list_json = open(patch_path + '/' + filelist_name, 'r')
         changed_file_list = json.loads(file_list_json.read())
