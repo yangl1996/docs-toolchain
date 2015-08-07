@@ -36,5 +36,5 @@ class Repository:
         if not revert:
             command = """cd {} \n git apply {} \n""".format(self.__path, patch_path)
         else:
-            command = """cd {} \n git apply -R {} \n""".format(self.__path, patch_path)
+            command = """cd {} \n git apply -R {} \n git stash --all""".format(self.__path, patch_path)
         os.system(command)
