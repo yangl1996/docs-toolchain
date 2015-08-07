@@ -69,7 +69,7 @@ def ci_build(pull_request_id, patch_url):
             filelist.append(this_file)
     gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file), True)
     filelist_name = "filelist-pr-{}.json".format(pull_request_id)
-    with open(patch_path + '/' + filelist_name, 'w') as f:
+    with open(patch_path + filelist_name, 'w') as f:
         json.dump(filelist, f)
 
 
