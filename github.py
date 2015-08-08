@@ -36,7 +36,7 @@ def ci_build(pull_request_id, patch_url):
     data = json.loads(r.text)
     patch_data = urlopen(patch_url)
     patch_file = '{}.patch'.format(pull_request_id)
-    patch_path = '{}/localdata/{}/'.format(config.localRepoPath, pull_request_id)
+    patch_path = '{}/{}/'.format(config.patchFolderPath, pull_request_id)
 
     if not os.path.exists(os.path.dirname(patch_path)):
         os.makedirs(os.path.dirname(patch_path))
@@ -44,11 +44,7 @@ def ci_build(pull_request_id, patch_url):
     f = open(patch_path + patch_file, 'w')
     f.write(patch_data.read().decode('utf-8'))
     f.close()
-
-    print("before all")
-    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file))
-    print("before two")
-
+    gitRepository.apply("{}/{}".format(patch_path, patch_file))
     filelist = []
     for changed_file in data:
         this_file = {'filename': changed_file['filename'],
@@ -69,8 +65,7 @@ def ci_build(pull_request_id, patch_url):
                 this_file['built'] = True
         finally:
             filelist.append(this_file)
-    gitRepository.apply("localdata/{}/{}".format(pull_request_id, patch_file), True)
-    print("after all")
+    gitRepository.stash()
     filelist_name = "filelist-pr-{}.json".format(pull_request_id)
     with open(patch_path + '/' + filelist_name, 'w') as f:
         json.dump(filelist, f)
@@ -99,23 +94,24 @@ def handle_pull_request(post_body):
 
         filelist = '<code>'
 
-        # TODO: dump filelist and on update check
-        patch_path = '{}/localdata/{}/'.format(config.localRepoPath, info['id'])
+        patch_path = '{}/{}/'.format(config.patchFolderPath, info['id'])
         filelist_name = "filelist-pr-{}.json".format(info['id'])
         file_list_json = open(patch_path + '/' + filelist_name, 'r')
         changed_file_list = json.loads(file_list_json.read())
         file_list_json.close()
         preview_html = ""
+        build_file_count = 0
         for changed_file in changed_file_list:
             filelist += "{}\n".format(changed_file['filename'])
             if changed_file['built']:
+                build_file_count += 1
                 preview_html += """<tr>
                                      <th></th>
                                      <td><a href="{}" target="_blank">{}</a></td>
                                    </tr>""".format("{}/{}".format(config.ciServer, changed_file['built_path']),
                                                    changed_file['filename'])
 
-        if len(changed_file_list) == 0:
+        if build_file_count == 0:
             built_time_tag = "No preview available."
         else:
             built_time_tag = "Built at " + datetime.datetime.utcnow().strftime("%m/%d/%Y %H:%M UTC")
@@ -153,6 +149,35 @@ def handle_pull_request(post_body):
         conn.close()
         # call pagure API to post the corresponding issue
         pagure.create_issue(pagure_title, pagure_content)
+
+    elif data['action'] == 'synchronize':
+        logging.info("New commits pushed to existing pull request.")
+        info = {'id': data['pull_request']['number'], 'patch_url': data['pull_request']['patch_url']}
+        ci_build(info['id'], info['patch_url'])
+        pagure_content = "*Commented by the toolchain*\n\n```\n"
+        pagure_content += "New commits pushed to tracked branch. Preview has been updated.\n```\n\n"
+
+        patch_path = '{}/{}/'.format(config.patchFolderPath, info['id'])
+        filelist_name = "filelist-pr-{}.json".format(info['id'])
+        file_list_json = open(patch_path + '/' + filelist_name, 'r')
+        changed_file_list = json.loads(file_list_json.read())
+        file_list_json.close()
+        for changed_file in changed_file_list:
+            if changed_file['built']:
+                pagure_content += "* [{}]({}/{})\n".format(changed_file['filename'],
+                                                           config.ciServer,
+                                                           changed_file['built_path'])
+
+        conn = sqlite3.connect(config.issueDatabasePath)
+        c = conn.cursor()
+        c.execute('SELECT * FROM Requests WHERE GitHubID=?', (info['id'],))
+        entry = c.fetchone()
+        conn.close()
+        try:
+            pagure_id = int(entry[3])
+            pagure.comment_issue(pagure_id, pagure_content)
+        except TypeError:
+            logging.warning("Can't find corresponding pagure issue.")
 
     # PR closed
     elif data['action'] == 'closed':
