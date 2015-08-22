@@ -60,7 +60,8 @@ def ci_build(pull_request_id, patch_url):
                                           output="{}/{}/{}.html".format(config.ciRepoPath,
                                                                         pull_request_id,
                                                                         filename),
-                                          output_format="html5")
+                                          output_format="html5",
+                                          extensions=['markdown.extensions.fenced_code'])
                 this_file['built_path'] = "{}/{}.html".format(pull_request_id, filename)
                 this_file['built'] = True
         finally:
